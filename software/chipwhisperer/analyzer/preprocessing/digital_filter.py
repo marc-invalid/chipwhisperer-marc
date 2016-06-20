@@ -72,6 +72,9 @@ class Filter(PreprocessingBase):
         elif ftype == "bandstop":
             self.findParam('freq2').show()
             freqs = "(%f, %f)" % (freq1, freq2)
+        elif ftype == "bandstop":
+            self.findParam('freq2').show()
+            freqs = "(%f, %f)" % (freq1, freq2)
         else:
             self.findParam('freq2').hide()
             freqs = "%f" % freq1
