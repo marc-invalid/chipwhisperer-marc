@@ -21,10 +21,18 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with chipwhisperer.  If not, see <http://www.gnu.org/licenses/>.
-import logging
+#=================================================
+#
+#    Date         Author                Changes
+#    -----------  --------------------  -----------------------------------
+#    21-Jun-2016  marc                  Added "Save as" file menu item
+
+__author__ = "Colin O'Flynn"
+
 import sys
 import os
 import traceback
+import logging
 
 #We always import PySide first, to force usage of PySide over PyQt
 from chipwhisperer.common.ui.logger_widget import LoggingWidget
@@ -286,6 +294,9 @@ class CWMainGUI(QMainWindow):
         self.saveAct = QAction(QIcon('save.png'), '&Save...', self, shortcut=QKeySequence.Save,
                                statusTip='Save current project to Disk', triggered=self.saveProject)
         self.fileMenu.addAction(self.saveAct)
+        self.saveAsAct = QAction(QIcon('save.png'), '&Save as...', self,
+                               statusTip='Save current project to Disk with a different name', triggered=self.saveProjectAs)
+        self.fileMenu.addAction(self.saveAsAct)
 
         self.prefAct = QAction("&Preferences", self, statusTip="Set preferences", triggered=self.cwPrefDialog.show)
         self.fileMenu.addSeparator()
@@ -472,6 +483,23 @@ class CWMainGUI(QMainWindow):
                 return
 
             fname = fd.selectedFiles()[0]
+
+        self.api.saveProject(fname)
+        self.updateStatusBar("Project Saved")
+
+    def saveProjectAs(self):
+        fname = self.api.project().getFilename()
+
+        fd = QFileDialog(self, 'Save as New File', fname, 'ChipWhisperer Project (*.cwp)')
+        fd.setOption(QFileDialog.DontUseNativeDialog)
+        fd.setDefaultSuffix('cwp') # Will not append the file extension if using the static file dialog
+        fd.setAcceptMode(QFileDialog.AcceptSave)
+        fd.setViewMode(QFileDialog.Detail)
+        if fd.exec_() != QDialog.Accepted:
+            return
+
+        fname = fd.selectedFiles()[0]
+        if not fname: return
 
         self.api.saveProject(fname)
         self.updateStatusBar("Project Saved")
