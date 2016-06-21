@@ -24,11 +24,16 @@
 #    You should have received a copy of the GNU General Public License
 #    along with chipwhisperer.  If not, see <http://www.gnu.org/licenses/>.
 #=================================================
+#
+#    Date         Author                Changes
+#    -----------  --------------------  -----------------------------------
+#    21-Jun-2016  marc                  Added "Transparent Filter" to affect registration without altering trace data
 
 import numpy as np
 
 from chipwhisperer.common.results.base import ResultsBase
 from ._base import PreprocessingBase
+from scipy import signal
 
 
 class ResyncSAD(PreprocessingBase):
@@ -40,6 +45,10 @@ class ResyncSAD(PreprocessingBase):
 
     def __init__(self, traceSource=None):
         PreprocessingBase.__init__(self, traceSource)
+
+        self.importsAppend("import scipy as sp")
+        self.filterGenerator = None
+
         self.rtrace = 0
         self.debugReturnSad = False
         self.ccStart = 0
@@ -55,7 +64,15 @@ class ResyncSAD(PreprocessingBase):
             {'name':'Input Window', 'key':'windowpt', 'type':'rangegraph', 'graphwidget':ResultsBase.registeredObjects["Trace Output Plot"],
                                                                      'action':self.updateScript, 'value':(0, 0), 'default':(0, 0)},
             # {'name':'Valid Limit', 'type':'float', 'value':0, 'step':0.1, 'limits':(0, 10), 'set':self.setValidLimit},
-            # {'name':'Output SAD (DEBUG)', 'type':'bool', 'value':False, 'set':self.setOutputSad}
+            # {'name':'Output SAD (DEBUG)', 'type':'bool', 'value':False, 'set':self.setOutputSad},
+
+            {'name':'Transparent Filter', 'key':'filtergenerator', 'type':'list', 'values':{"None":"None", "Butterworth":"sp.signal.butter"}, 'default':"None", 'value':"None", 'action':self.updateScript},
+            {'name':'  Type', 'key':'filtertype', 'type':'list', 'values':["low", "high", "bandpass", "bandstop"], 'default':'low', 'value':'low', 'action':self.updateScript},
+            {'name':'  Freq #1 (0-1)', 'key':'filterfreq1', 'type':'float', 'limits':(0, 1), 'step':0.05, 'default':0.1, 'value':0.1, 'action':self.updateScript},
+            {'name':'  Freq #2 (0-1)', 'key':'filterfreq2', 'type':'float', 'limits':(0, 1), 'step':0.05, 'default':0.8, 'value':0.8, 'action':self.updateScript},
+            {'name':'  Order', 'key':'filterorder', 'type':'int', 'limits':(1, 32), 'default':5, 'value':5, 'action':self.updateScript},
+            {'name':'  Alter trace data', 'key':'filtervisible', 'type':'bool', 'default':True, 'value':True, 'action':self.updateScript}
+
         ])
         self.updateScript()
         self.updateLimits()
@@ -79,6 +96,61 @@ class ResyncSAD(PreprocessingBase):
 
         self.updateLimits()
 
+	filtergenerator = self.findParam('filtergenerator').getValue()
+        self.addFunction("init", "setFilterGenerator", filtergenerator)
+
+        # remove stale filter args (optional ones that are use only by some filter generators)
+        self.delFunction("init", "setFilterParams")
+        self.delFunction("init", "setFilterVisible")
+
+	# describe BUTTERWORTH filter
+
+	if filtergenerator == "sp.signal.butter":
+
+	    filtertype  = self.findParam('filtertype').getValue()
+            filterfreq1 = self.findParam('filterfreq1').getValue()
+            filterfreq2 = self.findParam('filterfreq2').getValue()
+
+	    self.findParam('filtertype').show()
+	    self.findParam('filterfreq1').show()
+	    self.findParam('filterorder').show()
+	    self.findParam('filtervisible').show()
+
+            if filtertype == "bandpass":
+                self.findParam('filterfreq2').show()
+                filterfreqs = "(%f, %f)" % (filterfreq1, filterfreq2)
+            elif filtertype == "bandstop":
+                self.findParam('filterfreq2').show()
+                filterfreqs = "(%f, %f)" % (filterfreq1, filterfreq2)
+            else:
+                self.findParam('filterfreq2').hide()
+                filterfreqs = "%f" % filterfreq1
+
+            self.addFunction("init", "setFilterParams", "type='%s', freq=%s, order=%d" % (
+                                filtertype,
+                                filterfreqs,
+                                self.findParam('filterorder').getValue()
+                            ))
+
+            self.addFunction("init", "setFilterVisible", self.findParam('filtervisible').getValue())
+
+        else:
+	    self.findParam('filtertype').hide()
+	    self.findParam('filterfreq1').hide()
+	    self.findParam('filterfreq2').hide()
+	    self.findParam('filterorder').hide()
+	    self.findParam('filtervisible').hide()
+
+    def setFilterGenerator(self, filtergenerator=None):
+        self.filterGenerator = filtergenerator
+
+    def setFilterParams(self, type='low', freq=0.8, order=5):
+        if self.filterGenerator != None:
+            self.b, self.a = self.filterGenerator(order, freq, type)
+
+    def setFilterVisible(self, visible=True):
+        self.filterVisible = visible
+
     def setReference(self, rtraceno=0, refpoints=(0, 0), inputwindow=(0, 0)):
         self.rtrace = rtraceno
         self.wdStart = inputwindow[0]
@@ -95,7 +167,14 @@ class ResyncSAD(PreprocessingBase):
             trace = self._traceSource.getTrace(n)
             if trace is None:
                 return None
-            sad = self.findSAD(trace)
+
+            if self.filterGenerator != None:
+                filttrace = signal.lfilter(self.b, self.a, trace)
+                sad = self.findSAD(filttrace)
+                if self.filterVisible == True:
+                    trace = filttrace
+            else:
+                sad = self.findSAD(trace)
             
             if self.debugReturnSad:
                 return sad
@@ -143,8 +222,12 @@ class ResyncSAD(PreprocessingBase):
         if self.enabled == False:
             return
         
-        self.reftrace = self._traceSource.getTrace(tnum)[self.ccStart:self.ccEnd]
-        sad = self.findSAD(self._traceSource.getTrace(tnum))
+        trace = self._traceSource.getTrace(tnum);
+        if self.filterGenerator != None:
+            trace = signal.lfilter(self.b, self.a, trace)
+
+        self.reftrace = trace[self.ccStart:self.ccEnd]
+        sad = self.findSAD(trace)
         self.refmaxloc = np.argmin(sad)
         self.refmaxsize = min(sad)
         self.maxthreshold = np.mean(sad)
