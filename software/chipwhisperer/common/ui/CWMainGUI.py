@@ -505,6 +505,23 @@ class CWMainGUI(QMainWindow):
         self.api.saveProject(fname)
         self.updateStatusBar("Project Saved")
 
+    def saveProjectAs(self):
+        fname = self.api.project().getFilename()
+
+        fd = QFileDialog(self, 'Save as New File', fname, 'ChipWhisperer Project (*.cwp)')
+        fd.setOption(QFileDialog.DontUseNativeDialog)
+        fd.setDefaultSuffix('cwp') # Will not append the file extension if using the static file dialog
+        fd.setAcceptMode(QFileDialog.AcceptSave)
+        fd.setViewMode(QFileDialog.Detail)
+        if fd.exec_() != QDialog.Accepted:
+            return
+
+        fname = fd.selectedFiles()[0]
+        if not fname: return
+
+        self.api.saveProject(fname)
+        self.updateStatusBar("Project Saved")
+
     def newProject(self):
         self.okToContinue()
         self.api.newProject()
