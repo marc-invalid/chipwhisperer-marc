@@ -97,6 +97,19 @@ class PartitionEncKey(object):
         return key
 
 
+class PartitionTextOut_Bit0000(object):
+
+    sectionName = "Partition Based on TextOut Bit 0"
+    partitionType = "TextOut Bit 0"
+
+    def getNumPartitions(self):
+        return 2
+
+    def getPartitionNum(self, trace, tnum):
+        textout = trace.getTextout(tnum)
+        return [textout[0] % 2]
+
+
 class PartitionRandvsFixed(object):
 
     sectionName = "Partition Based on Rand vs Fixed "
@@ -141,7 +154,7 @@ class Partition(Parameterized):
                     },
                 }
 
-    supportedMethods = [PartitionRandvsFixed, PartitionEncKey, PartitionRandDebug, PartitionHWIntermediate, PartitionHDLastRound]
+    supportedMethods = [PartitionRandvsFixed, PartitionEncKey, PartitionTextOut_Bit0000, PartitionRandDebug, PartitionHWIntermediate, PartitionHDLastRound]
 
     def __init__(self):
         self.setPartMethod(PartitionRandvsFixed)
