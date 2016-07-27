@@ -23,7 +23,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with chipwhisperer.  If not, see <http://www.gnu.org/licenses/>.
 #=================================================
-
 from functools import partial
 import numpy as np
 from PySide.QtGui import *
@@ -44,13 +43,14 @@ class AttackResultPlot(GraphWidget, ResultsBase, AttackObserver):
         GraphWidget.__init__(self)
 
         self.getParams().addChildren([
-            {'name':'Draw Type', 'type':'list', 'key':'drawtype', 'values':['Fastest', 'Normal', 'Detailed'], 'value':'Normal',
-                                 'help':'%namehdr%'+
-                                        "Draw types:\n"
-                                        " * Fast: Group traces into a min/max area;\n"
-                                        " * Normal: Plot all traces continuously;\n"
-                                        " * Detailed: Plot all traces individually.\n"
-                                        "Only highlighted traces can be selected in fast/normal.\n"
+            {'name':'Draw Type', 'type':'list', 'key':'drawtype', 'values':['Fastest', 'Normal', 'Detailed'],
+             'value':'Normal',
+             'help': '%namehdr%'+
+                     "Draw types:\n"
+                     " * Fast: Group traces into a min/max area;\n"
+                     " * Normal: Plot all traces continuously;\n"
+                     " * Detailed: Plot all traces individually.\n\n"
+                     "Only highlighted traces can be selected in fast/normal modes.\n"
              },
         ])
 
@@ -112,27 +112,6 @@ class AttackResultPlot(GraphWidget, ResultsBase, AttackObserver):
         self.doRedraw = True
         self.redrawPlot()
 
-    # def backgroundplot(self, prange, data, pen=None, highres=False):
-    #    datalen =  max(prange)-min(prange)+1
-    #    if data is None:
-    #        # Setup call
-    #        if highres is False:
-    #            if pen is None:
-    #                #No pen specified - init call
-    #                self.backgroundplotMax = np.empty((datalen,1))
-    #                self.backgroundplotMax[:] = np.NAN
-    #                self.backgroundplotMin = np.empty((datalen,1))
-    #                self.backgroundplotMin[:] = np.NAN
-    #            else:
-    #                print "Plotting"
-    #                self.pw.plot(prange, self.backgroundplotMax, pen)
-    #                self.pw.plot(prange, self.backgroundplotMin, pen)
-    #
-    #    else:
-    #        #Store min/max
-    #        self.backgroundplotMax = np.fmax(self.backgroundplotMax, data)
-    #        self.backgroundplotMin = np.fmin(self.backgroundplotMin, data)
-
     def redrawPlot(self):
         pass
 
@@ -173,7 +152,7 @@ class AttackResultPlot(GraphWidget, ResultsBase, AttackObserver):
 
             if drawtype.startswith('fast'):
                 newdiff = np.array(ydataptr)
-                if bnum < len(highlightedKeys):
+                if highlightedKeys[bnum] is not None and bnum < len(highlightedKeys):
                     newdiff = np.delete(newdiff, highlightedKeys[bnum], 0)
 
                 if top is not None:

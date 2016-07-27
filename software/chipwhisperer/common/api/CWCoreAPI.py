@@ -310,12 +310,14 @@ class CWCoreAPI(Parameterized):
         try:
             ac = AcquisitionController(self.getScope(), self.getTarget(), writer=None, auxList=self._auxList, keyTextPattern=self.getAcqPattern())
             ac.sigNewTextResponse.connect(self.sigNewTextResponse.emit)
+            if self.getTarget():
+                self.getTarget().init()
             return ac.doSingleReading()
         except Warning:
             sys.excepthook(*sys.exc_info())
             return False
 
-    def captureM(self, progressBar = None):
+    def captureM(self, progressBar=None):
         """Capture multiple traces and save its result"""
         if not progressBar: progressBar = ProgressBarText()
 
@@ -369,6 +371,7 @@ class CWCoreAPI(Parameterized):
             if currentTrace is not None:
                 currentTrace.unloadAllTraces()  # Required in order to make the GC work properly :(
                 self._traceFormat.unloadAllTraces()
+        return True
 
     def runScriptModule(self, mod, funcName="run"):
         """Execute the function in the Plugin classes of the specified module"""

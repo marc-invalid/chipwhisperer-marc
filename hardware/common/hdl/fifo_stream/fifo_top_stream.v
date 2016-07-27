@@ -26,15 +26,23 @@ module fifo_top(
 	 input wire  [31:0] presample_i,
 	 input wire  [31:0]	max_samples_i,
 	 output wire [31:0]	max_samples_o,
-	 output wire [31:0] samples_o
+	 output wire [31:0] samples_o,
+	 
+	 output wire      fifo_overflow, //If overflow happens (bad during stream mode)
+	 input wire       stream_mode //1=Enable stream mode, 0=Normal
 	 );
 	 
 	 parameter FIFO_FULL_SIZE = `MAX_SAMPLES - 128;
 	 parameter FIFO_FULL_SIZE_LARGEWORDS = ((`MAX_SAMPLES - 32) / 3) / 4;
-	 
-	reg adc_capture_stop_reg;
-	assign adc_capture_stop = adc_capture_stop_reg;
-	 
+
+	wire				adc_capture_stop_int;
+	reg 				adc_capture_stop_reg;
+   wire           fifo_overflow_int;
+	reg            fifo_overflow_reg;
+	assign fifo_overflow = fifo_overflow_reg;
+	assign adc_capture_stop_int = (stream_mode) ? fifo_overflow_int : adc_capture_stop_reg;
+	assign adc_capture_stop = adc_capture_stop_int;
+	  
 	//Reset FIFO, clearning contents
 	reg 				fifo_rst;
 	
@@ -49,6 +57,15 @@ module fifo_top(
 	reg [9:0]		adcfifo_adcsample0;
 	reg [9:0]		adcfifo_adcsample1;
 	reg [9:0]		adcfifo_adcsample2;
+	
+	always @(posedge fifo_read_fifoclk) begin
+		if (fifo_rst == 1'b1) begin
+			fifo_overflow_reg <= 1'b0;
+		end else if (fifo_overflow_int) begin
+			fifo_overflow_reg <= 1'b1;
+		end		
+		
+	end
 	
 	
 	`ifdef NOBUFG_ADCCLK
@@ -90,7 +107,7 @@ module fifo_top(
 	end
 	
 	always@(posedge adc_sampleclk) begin
-		if(presample_counter == presample_i)
+		if((presample_counter == presample_i) && (stream_mode == 1'b0))
 			adc_capture_stop_reg <= 1'b1;
 		else
 			adc_capture_stop_reg <= 1'b0;
@@ -99,7 +116,7 @@ module fifo_top(
 	always@(posedge adc_sampleclk) begin
 		if (fifo_rst)
 			fifo_capture_en <= 1'b1;
-		else if (adc_capture_stop_reg)
+		else if (adc_capture_stop_int)
 			fifo_capture_en <= 1'b0;
 	end
 	
@@ -120,6 +137,7 @@ module fifo_top(
 	always@(posedge adc_sampleclk) prev_arm <= arm_i;
 	always@(posedge adc_sampleclk) prev_arm_dly <= prev_arm;
 	always@(posedge adc_sampleclk) fifo_rst <= ~prev_arm_dly & prev_arm;
+
 		
 	reg [1:0] mergeloc;
 	always @(posedge adc_sampleclk) begin
@@ -160,7 +178,7 @@ module fifo_top(
 	
 	reg read_en;
 	always @(posedge fifo_read_fifoclk)
-		if (fifo_rst | reset_i | adc_capture_go)
+		if (fifo_rst | reset_i | (adc_capture_go & ~stream_mode))
 			read_en <= 0;
 		else
 			read_en <= (byte_select == 16'b1000000000000000) ? 1'b1 : 1'b0;
@@ -188,8 +206,6 @@ module fifo_top(
 	
 	wire adcfifo_full, fifo_empty;
 	
-	wire stream_mode;
-	assign stream_mode = 1'b0;
 	wire stream_write;
 	assign stream_write = (stream_mode) ? adc_capture_go : 1'b1; //In stream mode we don't write until trigger	
 	reg fifo_too_full;
@@ -240,6 +256,7 @@ module fifo_top(
 	  .dout(fifo_data), // output [127 : 0] dout
 	  .full(adcfifo_full), // output full
 	  .empty(fifo_empty), // output empty
+	  .overflow(fifo_overflow_int), //
 	  .rd_data_count(samples_o[31:4])
 	);
 	
@@ -251,9 +268,7 @@ module fifo_top(
 	end
 
 	assign samples_o[3:0] = 4'b0000;
-
 /*
-	
 	wire [35:0] CONTROL0;
 	wire [63:0] cs_data;
 	
@@ -263,7 +278,7 @@ module fifo_top(
 	
 	coregen_ila ila (
     .CONTROL(CONTROL0), // INOUT BUS [35:0]
-    .CLK(adc_sampleclk), // IN
+    .CLK(fifo_read_fifoclk), // IN
     .TRIG0(cs_data) // IN BUS [63:0]
 	);
 
@@ -277,10 +292,8 @@ module fifo_top(
 	assign cs_data[9] = fifo_rst;
 	assign cs_data[10] = fifo_too_full;
 	assign cs_data[11] = drain;
-	assign cs_data[31:16] = samples_o[15:0];
+	assign cs_data[31:16] = samples_o[19:4];
 	assign cs_data[63:32] = presample_counter;
-
 */
-	
 
 endmodule

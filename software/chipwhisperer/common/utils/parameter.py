@@ -332,7 +332,7 @@ class Parameter(object):
                 if isinstance(limits, dict) and value in limits.keys():
                     value = limits[value]
                 else:
-                    raise ValueError("Value %s out of limits in parameter \"%s\"" % (str(value), self.getName()))
+                    raise ValueError("Value %s out of limits (%s) in parameter \"%s\"" % (str(value), str(limits), self.getName()))
 
         try:
             if blockSignal is not None:
@@ -667,8 +667,11 @@ class Parameter(object):
                     pass
                 elif child.getType() == "list" and isinstance(child.opts["limits"], dict):
                     value = child.opts["limits"][value]
-                elif child.getType() != "list" and value != "":
-                    value = eval(value)
+                elif value != "":
+                    try:
+                        value = eval(value)
+                    except:
+                        pass
                 if not child.readonly():
                     child.setValue(value)
                 else:

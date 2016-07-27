@@ -219,7 +219,7 @@ class TriggerSettings(Parameterized):
 
     def __init__(self, oaiface):
         self.oa = oaiface
-        self.maxsamples = 0
+        self._numSamples = 0
         self.presamples_desired = 0
         self.presamples_actual = 0
         self.presampleTempMargin = 24
@@ -248,7 +248,9 @@ class TriggerSettings(Parameterized):
                             '  Low             Trigger when line is "low".\n' +
                             '  High            Trigger when line is "high".\n' +
                             '  =============== ==============================\n\n' +
-                            'Note the "Trigger Mode" should be set to "Rising Edge" if using either the "SAD Trigger" or "IO Trigger" modes.'
+                            'Note the "Trigger Mode" should be set to "Rising Edge" if using either the "SAD Trigger" or "IO Trigger" modes.\n\n'+
+                            'If using STREAM mode (CW-Pro only), the trigger should use a rising or falling edge. Using a constant level is possible, but ' +
+                            'normally requires additional delay added via "offset" (see stream mode help for details).'
             },
             {'name': 'Timeout (secs)', 'type':'float', 'step':1, 'limits':(0, 1E99), 'set':self.setTimeout, 'get':self.timeout,
                      'help':'%namehdr%'+
@@ -260,10 +262,8 @@ class TriggerSettings(Parameterized):
             {'name': 'Pre-Trigger Samples', 'type':'int', 'limits':(0, self.oa.hwMaxSamples), 'set':self.setPresamples, 'get':self.presamples,
                      'help':'%namehdr%'+
                             'Record a certain number of samples before the main samples are captured. If "offset" is set to 0, this means ' +
-                            'recording samples BEFORE the trigger event.\n\n' +
-                            'WARNING: The pretrigger only works reliable on the CW1200 hardware. The ChipWhisperer-Lite often has trouble with '+
-                            'pre-triggering for many FPGA builds. It is  recommended use presampling only on the CW1200 hardware.'},
-            {'name': 'Total Samples', 'type':'int', 'limits':(0, self.oa.hwMaxSamples), 'set':self.setMaxSamples, 'get':self.maxSamples,
+                            'recording samples BEFORE the trigger event.'},
+            {'name': 'Total Samples', 'type':'int', 'limits':(0, self.oa.hwMaxSamples), 'set':self.setNumSamples, 'get':self.numSamples,
                      'help':'%namehdr%'+
                             'Total number of samples to record. Note the capture system has an upper limit. Older FPGA bitstreams had a lower limit of about 256 samples.'+
                             'If using the ChipWhisperer-Lite/ChipWhisperer-Pro (CW1173/CW1200) this is no longer the case, and can be set to almost any number.'},
@@ -274,9 +274,10 @@ class TriggerSettings(Parameterized):
             {'name': 'Stream Mode', 'type': 'bool', 'default': self._stream_mode, 'set': self.setStreamMode,
              'get': self.getStreamMode,
              'help': '%namehdr%' +
-                     'Stream mode streams data over high-speed USB. Requires slow sampling rate (< 8 MS/s).\n' +
-                     'This is currently a beta feature, and you may find errors when attempting to use longer'+
-                     'sample sizes.'})
+                     'Streams data over high-speed USB allowing to capture more samples (the exact max sample value and '
+                     'sample rate is unknown since it depends on how fast your computer can read from the buffer).'
+                     ' A slow sampling rate (ADC Freq < 10 MHz) may be required.\n\n' +
+                     'This feature is currently in BETA.'})
         self.params.addChildren(child_list)
 
     @setupSetParam("Stream Mode")
@@ -309,18 +310,18 @@ class TriggerSettings(Parameterized):
         return self.oa.getStatus() & STATUS_OVERFLOW_MASK
 
     @setupSetParam("Total Samples")
-    def setMaxSamples(self, samples):
-        self.maxsamples = samples
-        self.oa.setMaxSamples(samples)
+    def setNumSamples(self, samples):
+        self._numSamples = samples
+        self.oa.setNumSamples(samples)
 
-    def maxSamples(self,  cached=False):
+    def numSamples(self, cached=False):
         if self.oa is None:
             return 0
 
         if cached:
-            return self.maxsamples
+            return self._numSamples
         else:
-            return self.oa.maxSamples()
+            return self.oa.numSamples()
 
     @setupSetParam("Timeout (secs)")
     def setTimeout(self, timeout):
@@ -771,7 +772,7 @@ class ClockSettings(Parameterized):
 
             return phase
         else:
-            print("No phase shift loaded")
+            logging.warning("No phase shift loaded")
             return 0
 
     def dcmADCLocked(self):
@@ -788,7 +789,7 @@ class ClockSettings(Parameterized):
 
         result = self.oa.sendMessage(CODE_READ, ADDR_ADVCLK, maxResp=4)
         if (result[0] & 0x80) == 0:
-            print("ERROR: ADVCLK register not present. Version mismatch")
+            logging.error("ADVCLK register not present. Version mismatch")
             return (False, False)
 
         if (result[0] & 0x40) == 0:
@@ -839,10 +840,10 @@ class ClockSettings(Parameterized):
         samplefreq = float(self.oa.hwInfo.sysFrequency()) / float(pow(2,23))
 
         temp = self.oa.sendMessage(CODE_READ, ADDR_FREQ, maxResp=4)
-        freq = freq | (temp[0] << 0)
-        freq = freq | (temp[1] << 8)
-        freq = freq | (temp[2] << 16)
-        freq = freq | (temp[3] << 24)
+        freq |= temp[0] << 0
+        freq |= temp[1] << 8
+        freq |= temp[2] << 16
+        freq |= temp[3] << 24
 
         measured = freq * samplefreq
         return long(measured)
@@ -876,7 +877,7 @@ class OpenADCInterface(object):
         self.ddrMode = False
         self.sysFreq = 0
         self._streammode = False
-
+        self._sbuf = []
         self.settings()
 
         # Send clearing function if using streaming mode
@@ -891,6 +892,7 @@ class OpenADCInterface(object):
 
     def setStreamMode(self, stream):
         self._streammode = stream
+        self.updateStreamBuffer()
 
     def setTimeout(self, timeout):
         self._timeout = timeout
@@ -903,17 +905,17 @@ class OpenADCInterface(object):
         totalerror = 0
 
         for n in range(10):
-               # Generate 500 bytes
-               testData = bytearray(range(250) + range(250)) #bytearray(random.randint(0,255) for r in xrange(500))
-               self.sendMessage(CODE_WRITE, ADDR_MULTIECHO, testData, False)
-               testDataEcho = self.sendMessage(CODE_READ, ADDR_MULTIECHO, None, False, 502)
-               testDataEcho = testDataEcho[2:]
+            # Generate 500 bytes
+            testData = bytearray(range(250) + range(250)) #bytearray(random.randint(0,255) for r in xrange(500))
+            self.sendMessage(CODE_WRITE, ADDR_MULTIECHO, testData, False)
+            testDataEcho = self.sendMessage(CODE_READ, ADDR_MULTIECHO, None, False, 502)
+            testDataEcho = testDataEcho[2:]
 
-               #Compare
-               totalerror = totalerror + len([(i,j) for i,j in zip(testData,testDataEcho) if i!=j])
-               totalbytes = totalbytes + len(testData)
+            #Compare
+            totalerror = totalerror + len([(i,j) for i,j in zip(testData,testDataEcho) if i!=j])
+            totalbytes = totalbytes + len(testData)
 
-               print("%d errors in %d"%(totalerror, totalbytes))
+            logging.error('%d errors in %d' % (totalerror, totalbytes))
 
     def sendMessage(self, mode, address, payload=None, Validate=True, maxResp=None, readMask=None):
         """Send a message out the serial port"""
@@ -925,7 +927,7 @@ class OpenADCInterface(object):
         length = len(payload)
 
         if ((mode == CODE_WRITE) and (length < 1)) or ((mode == CODE_READ) and (length != 0)):
-            print("Invalid payload for mode")
+            logging.warning('Invalid payload for mode')
             return None
 
         if mode == CODE_READ:
@@ -968,16 +970,13 @@ class OpenADCInterface(object):
                         errmsg = "For address 0x%02x=%d" % (address, address)
                         errmsg += "  Sent data: "
                         for c in pba: errmsg += "%02x" % c
-                        errmsg += "\n"
-                        errmsg += "  Read data: "
+                        errmsg += " Read data: "
                         if check:
                             for c in check: errmsg += "%02x" % c
-                            errmsg += "\n"
                         else:
                             errmsg += "<Timeout>"
 
-                        print(errmsg)
-
+                        logging.error(errmsg)
         else:
             # ## Setup Message
             message = bytearray([])
@@ -1035,11 +1034,9 @@ class OpenADCInterface(object):
                         errmsg = "For address 0x%02x=%d" % (address, address)
                         errmsg += "  Sent data: "
                         for c in pba: errmsg += "%02x" % c
-                        errmsg += "\n"
-                        errmsg += "  Read data: "
+                        errmsg += " Read data: "
                         if check:
                             for c in check: errmsg += "%02x" % c
-                            errmsg += "\n"
                         else:
                             errmsg += "<Timeout>"
 
@@ -1049,7 +1046,7 @@ class OpenADCInterface(object):
     def setSettings(self, state, validate=True):
         cmd = bytearray(1)
         cmd[0] = state
-        self.sendMessage(CODE_WRITE, ADDR_SETTINGS, cmd, Validate=validate);
+        self.sendMessage(CODE_WRITE, ADDR_SETTINGS, cmd, Validate=validate)
 
     def settings(self):
         sets = self.sendMessage(CODE_READ, ADDR_SETTINGS)
@@ -1061,7 +1058,9 @@ class OpenADCInterface(object):
     def setReset(self, value):
         if value:
             self.setSettings(self.settings() | SETTINGS_RESET, validate=False)
-            self.hwMaxSamples = self.maxSamples()
+            #TODO: Hack to adjust the hwMaxSamples since the number should be smaller than what is being returned
+            self.hwMaxSamples = self.numSamples() - 45
+            self.setNumSamples(self.hwMaxSamples)
         else:
             self.setSettings(self.settings() & ~SETTINGS_RESET)
 
@@ -1079,7 +1078,7 @@ class OpenADCInterface(object):
         else:
             return None
 
-    def setMaxSamples(self, samples):
+    def setNumSamples(self, samples):
         cmd = bytearray(4)
         cmd[0] = ((samples >> 0) & 0xFF)
         cmd[1] = ((samples >> 8) & 0xFF)
@@ -1087,36 +1086,39 @@ class OpenADCInterface(object):
         cmd[3] = ((samples >> 24) & 0xFF)
         self.sendMessage(CODE_WRITE, ADDR_SAMPLES, cmd)
 
-        #Streaming mode also generates a buffer for storing
-        if self._streammode:
-            nae = self.serial
-            #Save the actual number of samples requested
+        self.updateStreamBuffer(samples)
+
+    def updateStreamBuffer(self, samples=None):
+        if samples is not None:
             self._stream_len = samples
 
+        bufsizebytes = 0
+        if self._streammode:
+            nae = self.serial
             #Save the number we will return
-            bufsizebytes, self._stream_len_act = nae.cmdReadStream_bufferSize(samples)
+            bufsizebytes, self._stream_len_act = nae.cmdReadStream_bufferSize(self._stream_len)
 
-            #Generate the buffer to save buffer
-            self._sbuf = [0] * bufsizebytes
+        #Generate the buffer to save buffer
+        self._sbuf = [0] * bufsizebytes
 
-    def maxSamples(self):
-        '''Return the number of samples captured in one go'''
+    def numSamples(self):
+        """Return the number of samples captured in one go. Returns max after resetting the hardware"""
         samples = 0x00000000
         temp = self.sendMessage(CODE_READ, ADDR_SAMPLES, maxResp=4)
-        samples = samples | (temp[0] << 0)
-        samples = samples | (temp[1] << 8)
-        samples = samples | (temp[2] << 16)
-        samples = samples | (temp[3] << 24)
+        samples |= temp[0] << 0
+        samples |= temp[1] << 8
+        samples |= temp[2] << 16
+        samples |= temp[3] << 24
         return samples
 
     def getBytesInFifo(self):
         samples = 0
         temp = self.sendMessage(CODE_READ, ADDR_BYTESTORX, maxResp=4)
 
-        samples = samples | (temp[0] << 0)
-        samples = samples | (temp[1] << 8)
-        samples = samples | (temp[2] << 16)
-        samples = samples | (temp[3] << 24)
+        samples |= temp[0] << 0
+        samples |= temp[1] << 8
+        samples |= temp[2] << 16
+        samples |= temp[3] << 24
         return samples
 
     def flushInput(self):
@@ -1179,33 +1181,53 @@ class OpenADCInterface(object):
 
     def arm(self, enable=True):
         if enable:
-            if self._streammode:
-                self.serial.initStreamModeCapture(self._stream_len_act, self._sbuf, timeout_ms=int(self._timeout*1000))
-
+            #Must arm first
             self.setSettings(self.settings() | SETTINGS_ARM)
         else:
             self.setSettings(self.settings() & ~SETTINGS_ARM)
+
+    def startCaptureThread(self):
+        # Then init the stream mode stuff
+        if self._streammode:
+            # Stream mode adds 500mS of extra timeout on USB traffic itself...
+            self.serial.initStreamModeCapture(self._stream_len, self._sbuf, timeout_ms=int(self._timeout * 1000) + 500)
 
     def capture(self):
         timeout = False
 
         if self._streammode:
-            _, self._stream_rx_bytes = self.serial.cmdReadStream()
-            self.arm(False)
 
+            # Wait for a trigger, letting the UI run when it can
+            starttime = datetime.datetime.now()
+            while self.serial.cmdReadStream_isDone() == False:
+                # Wait for a moment before re-running the loop
+                time.sleep(0.05)
+                diff = datetime.datetime.now() - starttime
+
+                # If we've timed out, don't wait any longer for a trigger
+                if (diff.total_seconds() > self._timeout):
+                    logging.warning('Timeout in OpenADC capture(), trigger FORCED')
+                    timeout = True
+                    self.triggerNow()
+                    util.updateUI()
+                    break
+
+                # Give the UI a chance to update (does nothing if not using UI)
+                util.updateUI()
+
+            _, self._stream_rx_bytes = self.serial.cmdReadStream()
+            timeout |= self.serial.streamModeCaptureStream.timeout
             #Check the status now
-            overflow_flag = self.getStatus() & STATUS_OVERFLOW_MASK
             bytes_left, overflow_bytes_left, unknown_overflow = self.serial.cmdReadStream_getStatus()
             logging.debug("Streaming done, results: rx_bytes = %d, bytes_left = %d, overflow_bytes_left = %d"%(self._stream_rx_bytes, bytes_left, overflow_bytes_left))
+            self.arm(False)
 
-            if overflow_bytes_left > 0:
-                if overflow_bytes_left == self._stream_len_act:
-                    logging.warning("Streaming mode OVERFLOW occured as trigger signal was too fast. Try changing scope arm until after target.")
-                else:
-                    logging.warning("Streaming mode OVERFLOW occured with %d samples left - ADC sample clock may be too fast"%overflow_bytes_left)
+            if overflow_bytes_left == (self._stream_len - 3072):
+                logging.warning("Streaming mode OVERFLOW occured as trigger too fast - Adjust offset upward (suggest = 200 000)")
+                timeout = True
             elif unknown_overflow:
-                logging.warning("Streaming mode OVERFLOW occured - ADC sample clock may be too fast")
-
+                logging.warning("Streaming mode OVERFLOW occured during capture - ADC sample clock probably too fast for stream mode (keep ADC Freq < 10 MHz)")
+                timeout = True
         else:
             status = self.getStatus()
             starttime = datetime.datetime.now()
@@ -1238,7 +1260,8 @@ class OpenADCInterface(object):
             if nosampletimeout == 0:
                 logging.warning('No samples received. Either very long offset, or no ADC clock (try "Reset ADC DCM"). '
                                 'If you need such a long offset, manually update "nosampletimeout" limit in source code.')
-        
+                timeout = True
+
         return timeout
 
     def flush(self):
@@ -1251,12 +1274,12 @@ class OpenADCInterface(object):
             # Process data
             bsize = self.serial.cmdReadStream_size_of_fpgablock()
 
-            data = [0] * self.serial.cmdReadStream_bufferSize(self._stream_len_act)[0]
+            data = [0] * self.serial.cmdReadStream_bufferSize(self._stream_len)[0]
             data[0] = self._sbuf[0]
             dbuf2_idx = 1
             for i in range(0, self._stream_rx_bytes, bsize):
                 if self._sbuf[i] != 0xAC:
-                    print "shit"
+                    logging.warning("Stream mode: Expected sync byte (AC) at location %d but got %x" % (i, self._sbuf[i]))
                     break
                 s = i + 1
                 data[dbuf2_idx: (dbuf2_idx + (bsize - 1))] = self._sbuf[s:(s + (bsize - 1))]
@@ -1264,12 +1287,16 @@ class OpenADCInterface(object):
                 # Write to next section
                 dbuf2_idx += (bsize - 1)
 
-            logging.debug("Stream mode done, %d bytes ready for processing"%len(data))
+            logging.debug("Stream mode: done, %d bytes ready for processing"%len(data))
             datapoints = self.processData(data, 0.0)
             if datapoints:
-                logging.info("Stream mode done, %d samples processed"%len(datapoints))
+                logging.debug("Stream mode: done, %d samples processed"%len(datapoints))
             else:
-                logging.warning("Stream mode done, no samples resulted from processing")
+                logging.warning("Stream mode: done, no samples resulted from processing")
+                datapoints = []
+
+            if len(datapoints) > NumberPoints:
+                datapoints = datapoints[0:NumberPoints]
 
             return datapoints
 
@@ -1417,7 +1444,7 @@ class OpenADCInterface(object):
         diff = self.presamples_desired - trigsamp
         if diff > 0:
                fpData = [pad]*diff + fpData
-               logging.warning('Pretrigger not met. Increase presampleTempMargin.')
+               logging.warning('Pretrigger not met. Increase presampleTempMargin (in the code).')
         else:
                fpData = fpData[-diff:]
 

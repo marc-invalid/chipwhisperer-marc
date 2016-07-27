@@ -87,7 +87,7 @@ class AcquisitionController():
         self.sigNewTextResponse.emit(self.key, plaintext, resp, self.target.getExpected())
         return resp
 
-    def doSingleReading(self, update=True, N=None):
+    def doSingleReading(self, numPoints=None):
         # Set mode
         if self.auxList:
             for aux in self.auxList:
@@ -120,9 +120,10 @@ class AcquisitionController():
         # Get ADC reading
         if self.scope:
             try:
-                if self.scope.capture(update, N) == True:
-                    logging.warning('Timeout')
-                    return False
+                ret = self.scope.capture()
+                if ret:
+                    logging.debug('Timeout happened during acquisition.')
+                return not ret
             except IOError as e:
                 logging.error('IOError: %s' % str(e))
                 return False
@@ -152,9 +153,12 @@ class AcquisitionController():
                 if aux:
                     aux.traceArm()
 
+        if self.target:
+            self.target.init()
+
         self.currentTrace = 0
         while self.currentTrace < self.maxtraces:
-            if self.doSingleReading(True, None):
+            if self.doSingleReading():
                 try:
                     if self.writer:
                         for channelNum in channelNumbers:
@@ -164,6 +168,9 @@ class AcquisitionController():
                     logging.debug(str(e))
                 self.sigTraceDone.emit()
                 self.currentTrace += 1
+            else:
+                util.updateUI()  # Check if it was aborted
+
             if progressBar is not None:
                 if progressBar.wasAborted():
                     break
@@ -173,7 +180,7 @@ class AcquisitionController():
                 if aux:
                     aux.captureComplete()
 
-        if self.writer:
+        if self.writer and self.writer.numTraces()>0:
             # Don't clear trace as we re-use the buffer
             self.writer.config.setAttr("scopeSampleRate", self.scope.channels[channelNumbers[0]].getSampleRate())
             self.writer.closeAll(clearTrace=False)

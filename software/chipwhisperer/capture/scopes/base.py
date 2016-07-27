@@ -80,7 +80,7 @@ class ScopeTemplate(Parameterized):
         # raise NotImplementedError("Scope \"" + self.getName() + "\" does not implement method " + self.__class__.__name__ + ".arm()")
         pass
 
-    def capture(self, update=True, numberPoints=None):
+    def capture(self):
         """Capture one trace and returns True if timeout has happened."""
 
         # NOTE: If you have a waiting loop (waiting for arm), call the function util.updateUI() inside that loop to keep
@@ -109,7 +109,7 @@ class Channel(TraceSource):
         if len(data) > 0:
             self.sigTracesChanged.emit()
         else:
-            logging.warning('Error in "%s". Captured trace has len=0' % self.name)
+            logging.warning('Captured trace in "%s" has len=0' % self.name)
 
     def getTrace(self, n=0):
         if n != 0:
