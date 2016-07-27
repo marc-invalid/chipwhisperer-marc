@@ -1360,6 +1360,8 @@ class OpenADCInterface(object):
                 #Add some extra in case needed
                 hypBytes = (NumberPoints * 4)/3 + 256
 
+                print "MARC: (pre-sample bughunt) oa.readData() NumberPoints=%d bytesToRead=%d NumberPackages=%d nwords=%d hypBytes=%d" % (NumberPoints, bytesToRead, NumberPackages, nwords, hypBytes)
+
                 bytesToRead = min(hypBytes, bytesToRead)
 
                 # +1 for sync byte
@@ -1369,13 +1371,17 @@ class OpenADCInterface(object):
                 #       print "%x "%p,
 
                 if data:
-                    datapoints = datapoints + self.processData(data, 0.0)
+                    datapackage = self.processData(data, 0.0)
+                    if datapackage is not None:
+                        datapoints = datapoints + datapackage
 
                 if progressDialog:
                     progressDialog.setValue(status)
 
                     if progressDialog.wasCanceled():
                         break
+
+            print "MARC: (pre-sample bughunt) oa.readData() len=%d" % len(datapoints)
 
             # for point in datapoints:
             #       print "%3x"%(int((point+0.5)*1024))
