@@ -37,6 +37,7 @@ from chipwhisperer.common.utils import util
 from chipwhisperer.common.api.autoscript import AutoScript
 from chipwhisperer.common.api.CWCoreAPI import CWCoreAPI
 from chipwhisperer.common.ui.GraphWidget import GraphWidget
+from chipwhisperer.common.ui.GraphWidget import ColorPalette
 from chipwhisperer.common.utils.parameter import Parameterized, Parameter, setupSetParam
 from chipwhisperer.common.ui.CWMainGUI import CWMainGUI
 
@@ -267,6 +268,9 @@ class PartitionDisplay(Parameterized, AutoScript):
         self.graphDock = CWMainGUI.getInstance().addDock(self.graph, "Partition Comparison Graph", area=Qt.TopDockWidgetArea)
         self.graphDock.hide()
 
+        self.palette = ColorPalette()
+
+
     def defineName(self):
         self.partObject = Partition()
         partModeList = {}
@@ -331,7 +335,8 @@ class PartitionDisplay(Parameterized, AutoScript):
         for bnum in range(0, self.numKeys):
             if self.enabledbytes[bnum]:
                 self.graph.setColorInt(bnum, self.numKeys)
-                self.graph.passTrace(self.SADList[bnum], pen=pg.mkPen(pg.intColor(bnum, 16)), idString = str(bnum))
+                self.graph.passTrace(self.SADList[bnum], pen=pg.mkPen(self.palette.intColor(bnum, 16)), idString = str(bnum))
+                # FIXME: hardcoded 16 is probably because AES uses 16 bytes? ---------------------^^
 
     def updateScript(self, ignored=None):
         ##Partitioning & Differences
@@ -341,7 +346,7 @@ class PartitionDisplay(Parameterized, AutoScript):
         except AttributeError as e:
             return
 
-        self.importsAppend('from chipwhisperer.analyzer.utils.Partition import PartitionRandDebug, PartitionRandvsFixed, PartitionEncKey, PartitionTextOut_Bit0000, PartitionHWIntermediate, PartitionHDLastRound')
+        self.importsAppend('from chipwhisperer.analyzer.utils.Partition import PartitionRandDebug, PartitionRandvsFixed, PartitionEncKey, PartitionHWIntermediate, PartitionHDLastRound')
         self.importsAppend('from chipwhisperer.analyzer.utils.TraceExplorerScripts.PartitionDisplay import DifferenceModeTTest, DifferenceModeSAD')
         self.importsAppend('from chipwhisperer.analyzer.ui.CWAnalyzerGUI import CWAnalyzerGUI')
 
@@ -572,7 +577,7 @@ class PartitionDisplay(Parameterized, AutoScript):
         for i in range(0, self.numKeys):
             ql = QToolButton()
             ql.setText('%d' % i)
-            color = pg.intColor(i, self.numKeys)
+            color = self.palette.intColor(i, self.numKeys)
             ql.setStyleSheet("color: rgb(%d, %d, %d)" % (color.red(), color.green(), color.blue()))
             qa = QWidgetAction(self.graph)
             qa.setDefaultWidget(ql)

@@ -29,6 +29,187 @@ import chipwhisperer.common.utils.qt_tweaks as QtFixes
 import pyqtgraph as pg
 
 
+#------ Helper object to generate color palettes for plotting trace data.
+#
+#	All palettes work well on white background.
+#	For smaller palettes, dissimilarity of colors is maximized.
+#       Really small palettes are accessible to color-blind people.
+#
+#       The first color is a RED tone, similar to previous CW behaviour.
+
+class ColorPalette():
+
+    def __init__(self):
+
+        #--- Palette from "A Colour Alphabet and the Limits of Colour Coding" (Paul Green-Armytage)
+        #
+        #    Designed for maximum perceived difference for any set 0..N (up to 26 colors).
+        #    The first 9 colors work well for color-blind users.
+        #
+        #    See also: Discussion about which colors to choose: http://graphicdesign.stackexchange.com/questions/3682
+        #    See also: Online palette generator: http://tools.medialab.sciences-po.fr/iwanthue/
+
+        self.ColorAlphabet = [0] * 26
+
+        self.ColorAlphabet[ 0] = [240,163,255]
+        self.ColorAlphabet[ 1] = [  0,117,220]
+        self.ColorAlphabet[ 2] = [153, 63,  0]
+        self.ColorAlphabet[ 3] = [ 76,  0, 92]
+        self.ColorAlphabet[ 4] = [ 25, 25, 25]
+        self.ColorAlphabet[ 5] = [  0, 92, 49]
+        self.ColorAlphabet[ 6] = [ 43,206, 72]
+        self.ColorAlphabet[ 7] = [255,204,153]
+        self.ColorAlphabet[ 8] = [128,128,128]
+        self.ColorAlphabet[ 9] = [148,255,181]
+        self.ColorAlphabet[10] = [143,124,  0]
+        self.ColorAlphabet[11] = [157,204,  0]
+        self.ColorAlphabet[12] = [194,  0,136]
+        self.ColorAlphabet[13] = [  0, 51,128]
+        self.ColorAlphabet[14] = [255,164,  5]
+        self.ColorAlphabet[15] = [255,168,187]
+        self.ColorAlphabet[16] = [ 66,102,  0]
+        self.ColorAlphabet[17] = [255,  0, 16]
+        self.ColorAlphabet[18] = [ 94,241,242]
+        self.ColorAlphabet[19] = [  0,153,143]
+        self.ColorAlphabet[20] = [224,255,102]
+        self.ColorAlphabet[21] = [116, 10,255]
+        self.ColorAlphabet[22] = [153,  0,  0]
+        self.ColorAlphabet[23] = [255,255,128]
+        self.ColorAlphabet[24] = [255,255,  0]
+        self.ColorAlphabet[25] = [255, 80,  5]
+
+        self.recommendedSize = 26-7
+
+    def getRecommendedSize(self):
+        return self.recommendedSize
+
+    #--- replacement for pg.intColor() as used in this project
+
+    def intColor(self, index=0, range=9):
+
+        #--- Sanity-check arguments
+
+        if isinstance(index, QColor):
+            print "BUG WARNING: ColorPalette.intColor() called with a QColor as index (ignored)"
+            print index
+            return index
+
+        if isinstance(index, (int, long)) != True:
+            print "BUG WARNING: ColorPalette.intColor() called with index of wrong type (ignored)"
+            print index
+            index = 0
+
+        # print "MARC: ColorPalette.intColor(index=%d, range=%d)" % (index, range)
+
+        #--- Map index into range
+
+        if range > 0:
+            index = index % range
+
+        #--- Few colors requested: Use the hardcoded palette
+
+        if range <= self.recommendedSize:
+
+            #--- Skip some colors that don't work well with white background (adjust "recommendedSize" above when skipping more!)
+
+            index = index+1 if index>= 0 else index
+            index = index+1 if index>= 7 else index
+            index = index+1 if index>= 9 else index
+            index = index+1 if index>=18 else index
+            index = index+1 if index>=20 else index
+            index = index+1 if index>=23 else index
+            index = index+1 if index>=24 else index
+
+            #--- Force a RED-ish tone for the first trace
+            #
+            #    We shuffle around 3 colors to achieve this.  It weakens the properties of the
+            #    original table, but imitates the user experience of the algorithm for larger
+            #    palettes.
+
+            if index==1:
+                index = 17
+            elif index==2:
+                index = 1
+            elif index==17:
+                index = 2
+
+            #--- Convert to native format
+
+            r,g,b = self.ColorAlphabet[index]
+            a     = 255
+            color = QColor(r,g,b,a)
+
+            return color
+
+        #--- Many colors requested: Generate a rainbow palette
+        #
+        #    The "pyqtgraph.intColor" function works in HSV space, and has two issues:
+        #
+        #        1) Some colors are difficult to see against the white background.
+        #        2) Some colors are very similar to each other.
+        #
+        #    Avoid issue #1: We calculate contrast and darken the worst offenders.
+        #    Avoid issue #2: FIXME
+
+        color = pg.intColor(index, range)
+
+        #--- Calculate relative luminance according to rec.709 (SRGB)
+        #
+        #    Discussion: http://ux.stackexchange.com/questions/82056
+
+        r,g,b,a = pg.colorTuple(color)
+
+        rg = (float(r)/3294) if (r<=10) else (((float(r)/269) + 0.0513)**2.4)
+        gg = (float(g)/3294) if (g<=10) else (((float(g)/269) + 0.0513)**2.4)
+        bg = (float(b)/3294) if (b<=10) else (((float(b)/269) + 0.0513)**2.4)
+
+        L_color = (0.2126 * rg) + (0.7152 * gg) + (0.0722 * bg)
+        L_white = 1.0
+
+        contrast_actual  = (L_white + 0.05) / (L_color + 0.05)
+
+        #--- Darken the color if contrast is too low (against white background)
+        #
+        #    The threshold value is arbitrary.  Usability experts recommend a
+        #    contrast ratio of 7, but that would render the thin traces too dark.
+
+        contrast_desired = 1.368
+
+        if contrast_actual < contrast_desired:
+
+            #--- Adjust (linear)
+
+            adjust = contrast_actual / contrast_desired
+
+            rg = rg * (0.2126 * adjust)
+            gg = gg * (0.7152 * adjust)
+            bg = bg * (0.0722 * adjust)
+
+            #--- Convert to 8-bit SRGB
+
+            r  = ((rg**(1/2.4)) - 0.0513) * 269  if rg>0.0031  else rg*3294
+            g  = ((gg**(1/2.4)) - 0.0513) * 269  if gg>0.0031  else gg*3294
+            b  = ((bg**(1/2.4)) - 0.0513) * 269  if bg>0.0031  else bg*3294
+
+            r  = int(r + 0.5)
+            g  = int(g + 0.5)
+            b  = int(b + 0.5)
+
+            r = r if r>0 else 0
+            g = g if g>0 else 0
+            b = b if b>0 else 0
+
+            r = r if r<255 else 255
+            g = g if g<255 else 255
+            b = b if b<255 else 255
+
+            #--- Convert to native
+
+            color = QColor(r,g,b,a)
+
+        return color
+
+
 class ColorDialog(QtFixes.QDialog):
     """
     Simple dialog to pick colours for the trace data.
@@ -107,6 +288,7 @@ class GraphWidget(QWidget):
         self._customWidgets = []
 
         self.colorDialog = ColorDialog()
+        self.colorPalette = ColorPalette()
 
         self.pw = pg.PlotWidget(name="Power Trace View")
         # self.pw.setTitle(title= 'Power Trace View')
@@ -222,19 +404,20 @@ class GraphWidget(QWidget):
         self.persistant = enabled
         
     def setColorInt(self, colorint, numcolors=16):
-
-        # See http://www.pyqtgraph.org/documentation/functions.html#pyqtgraph.mkColor
-        self.color = pg.intColor(colorint, hues=numcolors)
+        self.color = self.colorPalette.intColor(colorint, numcolors)
 
     def colorPrompt(self, enabled):
         """Prompt user to set colours"""
 
         if self.colorDialog.exec_():
             data = self.colorDialog.getValues()
-            self.setColorInt(data[0], 9)
+            # self.setColorInt(data[0], 9)
+            # self.acolor = self.seedColor = data[0]
+            # self.autocolor = data[1]
+            self.setColorInt(0, self.colorPalette.getRecommendedSize())
             self.acolor = self.seedColor = data[0]
             self.autocolor = data[1]
-        
+
     def VBStateChanged(self, obj):
         """Called when ViewBox state changes, used to sync X/Y AutoScale buttons"""
         arStatus = self.pw.getPlotItem().getViewBox().autoRangeEnabled()
@@ -314,7 +497,8 @@ class GraphWidget(QWidget):
 
         if self.persistant:
             if self.autocolor:
-                nc = (self.acolor + 1) % 8
+                #MARC: original code contained mod 8 here, but its not clear why?!
+                nc = (self.acolor + 1) % self.colorPalette.getRecommendedSize()
                 self.acolor = nc
             else:
                 self.acolor = self.color
@@ -326,7 +510,7 @@ class GraphWidget(QWidget):
             xaxis = range(startoffset, len(trace)+startoffset)
 
         if pen is None:
-            pen = pg.mkPen(self.acolor)
+            pen = pg.mkPen(self.colorPalette.intColor(self.acolor, self.colorPalette.getRecommendedSize()))
 
         p = self.pw.plot(x=xaxis, y=trace, pen=pen)
         self.setupPlot(p, 0, True, idString)
