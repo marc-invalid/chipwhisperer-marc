@@ -97,17 +97,26 @@ class PartitionEncKey(object):
         return key
 
 
-class PartitionTextOut_Bit0000(object):
+class PartitionTextOut_Bits_MSB(object):
 
-    sectionName = "Partition Based on TextOut Bit 0"
-    partitionType = "TextOut Bit 0"
+    sectionName = "Partition Based on TextOut 32 bit values (MSB)"
+    partitionType = "TextOut bit value MSB"
 
     def getNumPartitions(self):
         return 2
 
     def getPartitionNum(self, trace, tnum):
         textout = trace.getTextout(tnum)
-        return [textout[0] % 2]
+        guess = [0] * 32
+        for i in range(0, 8):
+            guess[i+ 0] = (textout[0] >> (7-i)) % 2
+        for i in range(0, 8):
+            guess[i+ 8] = (textout[1] >> (7-i)) % 2
+        for i in range(0, 8):
+            guess[i+16] = (textout[2] >> (7-i)) % 2
+        for i in range(0, 8):
+            guess[i+24] = (textout[3] >> (7-i)) % 2
+        return guess
 
 
 class PartitionRandvsFixed(object):
@@ -154,7 +163,7 @@ class Partition(Parameterized):
                     },
                 }
 
-    supportedMethods = [PartitionRandvsFixed, PartitionEncKey, PartitionTextOut_Bit0000, PartitionRandDebug, PartitionHWIntermediate, PartitionHDLastRound]
+    supportedMethods = [PartitionRandvsFixed, PartitionEncKey, PartitionTextOut_Bits_MSB, PartitionRandDebug, PartitionHWIntermediate, PartitionHDLastRound]
 
     def __init__(self):
         self.setPartMethod(PartitionRandvsFixed)

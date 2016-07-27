@@ -346,7 +346,7 @@ class PartitionDisplay(Parameterized, AutoScript):
         except AttributeError as e:
             return
 
-        self.importsAppend('from chipwhisperer.analyzer.utils.Partition import PartitionRandDebug, PartitionRandvsFixed, PartitionEncKey, PartitionHWIntermediate, PartitionHDLastRound')
+        self.importsAppend('from chipwhisperer.analyzer.utils.Partition import PartitionRandDebug, PartitionRandvsFixed, PartitionEncKey, PartitionTextOut_Bits_MSB, PartitionHWIntermediate, PartitionHDLastRound')
         self.importsAppend('from chipwhisperer.analyzer.utils.TraceExplorerScripts.PartitionDisplay import DifferenceModeTTest, DifferenceModeSAD')
         self.importsAppend('from chipwhisperer.analyzer.ui.CWAnalyzerGUI import CWAnalyzerGUI')
 
