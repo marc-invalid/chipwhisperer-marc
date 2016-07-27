@@ -1393,6 +1393,72 @@ class OpenADCInterface(object):
         fpData = []
         lastpt = -100
 
+        if data is None:
+            print("WARNING: No data available to process.")
+            return None
+#
+#--- Without this check, we may get an exception like this when using the "Offset" feature during capture (with CW1002):
+#
+#	Timeout in read: 0
+#	Traceback (most recent call last):
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/ui/CWCaptureGUI.py", line 117, in <lambda>
+#	    self.capture1Act = QAction(QIcon(':/images/play1.png'), 'Capture 1', self, triggered=lambda: self.doCapture(self.capture1))
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/ui/CWCaptureGUI.py", line 221, in doCapture
+#	    if callback():
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/ui/CWCaptureGUI.py", line 230, in capture1
+#	    self.api.capture1()
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/common/api/CWCoreAPI.py", line 314, in capture1
+#	    return ac.doSingleReading()
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/api/AcquisitionController.py", line 124, in doSingleReading
+#	    if self.scope.capture(update, N) == True:
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/OpenADC.py", line 176, in capture
+#	    return self.qtadc.capture(update, NumberPoints)
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/_qt.py", line 102, in capture
+#	    self.read(update, NumberPoints)
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/_qt.py", line 94, in read
+#	    self.datapoints = self.sc.readData(NumberPoints)
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/_OpenADCInterface.py", line 1207, in readData
+#	    datapoints = datapoints + self.processData(data, 0.0)
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/_OpenADCInterface.py", line 1231, in processData
+#	    if data[0] != 0xAC:
+#	TypeError: 'NoneType' object has no attribute '__getitem__'
+#
+#--- WITH this check, instead we get something like this:
+#
+#	Timeout in read: 0
+#	WARNING: No data available to process.
+#	WARNING: ProgressBar Capture in ProgressClosing not in 100%: progress = 233 and maximum = 539
+#	Capture in Progress: Done. Total time = 0:05:01.505733
+#	Traceback (most recent call last):
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/ui/CWCaptureGUI.py", line 118, in <lambda>
+#	    self.captureMAct = QAction(QIcon(':/images/playM.png'), 'Capture Trace Set', self, triggered=lambda: self.doCapture(self.captureM))
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/ui/CWCaptureGUI.py", line 221, in doCapture
+#	    if callback():
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/ui/CWCaptureGUI.py", line 233, in captureM
+#	    self.api.captureM(ProgressBar("Capture in Progress", "Capturing:"))
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/common/api/CWCoreAPI.py", line 363, in captureM
+#	    ac.doReadings(tracesDestination=self.project().traceManager())
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/api/AcquisitionController.py", line 164, in doReadings
+#	    if self.doSingleReading(True, None) == True:
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/api/AcquisitionController.py", line 124, in doSingleReading
+#	    if self.scope.capture(update, N) == True:
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/OpenADC.py", line 176, in capture
+#	    return self.qtadc.capture(update, NumberPoints)
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/_qt.py", line 102, in capture
+#	    self.read(update, NumberPoints)
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/_qt.py", line 94, in read
+#	    self.datapoints = self.sc.readData(NumberPoints)
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/_OpenADCInterface.py", line 1207, in readData
+#	    datapoints = datapoints + self.processData(data, 0.0)
+#	TypeError: can only concatenate list (not "NoneType") to list
+#	
+#	Timeout in read: 0
+#	Traceback (most recent call last):
+#	  File "/home/marc/Keep/Work/ChipWhisperer/chipwhisperer/software/chipwhisperer/capture/scopes/OpenADC.py", line 72, in dcmTimeout
+#	    raise e
+#	TypeError: object of type 'NoneType' has no len()
+
+
         if data[0] != 0xAC:
             logging.warning('Unexpected sync byte: 0x%x' % data[0])
             return None
