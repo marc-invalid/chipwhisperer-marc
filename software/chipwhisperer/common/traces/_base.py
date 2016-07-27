@@ -130,6 +130,25 @@ class TraceContainer(Parameterized, Plugin):
                     logging.warning('Padding with %d zero points' % pad)
                     trace.extend([0]*pad)
 
+                # Truncate traces that are too long to fit into the array.
+                #
+                # This happens when the first trace is smaller than the current trace.  Then
+                # the array dimension is too small.  Without truncating, an exception would
+                # occur and the trace would be lost (#Points=0 in trace management). This
+                # problem can be reproduced with a CW1002 when using pre-trigger samples:
+                #
+                #    WARNING: Exception caught in adding trace 0, trace skipped.
+                #    Exception info: cannot copy sequence with size 24573 to array axis with dimension 24525
+                #
+                # FIXME: Truncating does not fix the underlying issue, it reduces the impact.
+
+                if pad < 0:
+                    print "WARNING: Trace too long - length = %d"%len(trace)
+                    print "         Truncating by %d points" % (-pad)
+                    print " ***** This MAY SUGGEST DATA CORRUPTION *****"
+                    print " ***** (probably trace 0 is incomplete) *****"
+                    trace = trace[0:self.traces.shape[1]]
+
                 self.traces[self._numTraces][:] = trace
         except MemoryError:
             raise Warning("Failed to allocate/resize array for %d x %d, if you have sufficient memory it may be fragmented. Use smaller segments and retry." % (self.tracehint, self.traces.shape[1]))
