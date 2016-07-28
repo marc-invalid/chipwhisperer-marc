@@ -98,7 +98,7 @@ class WaveFormWidget(GraphWidget, ResultsBase, ActiveTraceObserver, Plugin):
             yUnit = self.findParam(['Y Axis','Unity']).getValue()
             xUnit = self.findParam('X Axis').getValue()
             xScale = self.findParam('X Axis').getValueKey()
-            self.pw.setLabel('bottom', text=xScale, units=xUnit)
+            self.pw.setLabel('bottom', text='<h2>'+xScale, units=xUnit)
             self.pw.setLabel('left', units=yUnit)
             xaxis = range(pstart + self._traceSource.offset(), pend + self._traceSource.offset() + 1)
             if xScale == 'Time':

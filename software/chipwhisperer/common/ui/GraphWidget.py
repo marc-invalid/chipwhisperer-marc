@@ -292,11 +292,11 @@ class GraphWidget(QWidget):
 
         self.pw = pg.PlotWidget(name="Power Trace View")
         # self.pw.setTitle(title= 'Power Trace View')
-        self.pw.setLabel('top', 'Power Trace View')
+        self.pw.setLabel('top', '<h2>Power Trace View</h2>')
         self.pw.getAxis('top').enableAutoSIPrefix(enable=False)
         self.pw.getAxis('top').setStyle(showValues=False)
-        self.pw.setLabel('bottom', 'Samples')
-        self.pw.setLabel('left', 'Data')
+        self.pw.setLabel('bottom', '<h2>Samples</h2>')
+        self.pw.setLabel('left', '<h2>Data</h2>')
         self.pw.getPlotItem().setContentsMargins(5,5,10,1)
         vb = self.pw.getPlotItem().getViewBox()
         vb.setMouseMode(vb.RectMode)
@@ -550,13 +550,13 @@ class GraphWidget(QWidget):
 
     def setLabels(self, top=None, xaxis=None, yaxis=None):
         if top:
-            self.pw.setLabel('top', top)
+            self.pw.setLabel('top', '<h2>' + top)
 
         if xaxis:
-            self.pw.setLabel('bottom', xaxis)
+            self.pw.setLabel('bottom', '<h2>' + xaxis)
 
         if yaxis:
-            self.pw.setLabel('left', yaxis)
+            self.pw.setLabel('left', '<h2>' + yaxis)
 
     def setCrossHairs(self, enabled):
         self.vLine.setVisible(enabled)
