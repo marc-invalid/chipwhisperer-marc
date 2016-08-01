@@ -33,55 +33,52 @@ import pyqtgraph as pg
 #
 #	All palettes work well on white background.
 #	For smaller palettes, dissimilarity of colors is maximized.
-#       Really small palettes are accessible to color-blind people.
 #
-#       The first color is a RED tone, similar to previous CW behaviour.
+#	TODO: The colors would work much better when plotted thicker than single-pixel lines.
+#	      Consider using a resolution-independent metric such as points.
 
 class ColorPalette():
 
     def __init__(self):
 
-        #--- Palette from "A Colour Alphabet and the Limits of Colour Coding" (Paul Green-Armytage)
+	#--- Palette MARC #2 v0.6
         #
-        #    Designed for maximum perceived difference for any set 0..N (up to 26 colors).
-        #    The first 9 colors work well for color-blind users.
+        #    Designed to work well in a trace plot with fine lines against white background.
         #
-        #    See also: Discussion about which colors to choose: http://graphicdesign.stackexchange.com/questions/3682
-        #    See also: Online palette generator: http://tools.medialab.sciences-po.fr/iwanthue/
+        #    The first 9 colors are meant to be especially easy to distinguish.  The 9th color is a
+        #    RED tone for visual compatibility to previous versions.  The number 9 originates from
+        #    the default argument hues=9 in pyqtgraph.intColor(), although the intention is to
+        #    provide at least 16 different colors.
+        #
+        #    Many colors were taken or derived from "A Colour Alphabet and the Limits of Colour Coding"
+        #    (Paul Green-Armytage).  Also read: http://graphicdesign.stackexchange.com/questions/3682
 
-        self.ColorAlphabet = [0] * 26
+        self.ColorPalette2 = [0] * 16
+        self.recommendedSize     = 16
 
-        self.ColorAlphabet[ 0] = [240,163,255]
-        self.ColorAlphabet[ 1] = [  0,117,220]
-        self.ColorAlphabet[ 2] = [153, 63,  0]
-        self.ColorAlphabet[ 3] = [ 76,  0, 92]
-        self.ColorAlphabet[ 4] = [ 25, 25, 25]
-        self.ColorAlphabet[ 5] = [  0, 92, 49]
-        self.ColorAlphabet[ 6] = [ 43,206, 72]
-        self.ColorAlphabet[ 7] = [255,204,153]
-        self.ColorAlphabet[ 8] = [128,128,128]
-        self.ColorAlphabet[ 9] = [148,255,181]
-        self.ColorAlphabet[10] = [143,124,  0]
-        self.ColorAlphabet[11] = [157,204,  0]
-        self.ColorAlphabet[12] = [194,  0,136]
-        self.ColorAlphabet[13] = [  0, 51,128]
-        self.ColorAlphabet[14] = [255,164,  5]
-        self.ColorAlphabet[15] = [255,168,187]
-        self.ColorAlphabet[16] = [ 66,102,  0]
-        self.ColorAlphabet[17] = [255,  0, 16]
-        self.ColorAlphabet[18] = [ 94,241,242]
-        self.ColorAlphabet[19] = [  0,153,143]
-        self.ColorAlphabet[20] = [224,255,102]
-        self.ColorAlphabet[21] = [116, 10,255]
-        self.ColorAlphabet[22] = [153,  0,  0]
-        self.ColorAlphabet[23] = [255,255,128]
-        self.ColorAlphabet[24] = [255,255,  0]
-        self.ColorAlphabet[25] = [255, 80,  5]
+        self.ColorPalette2[ 0] = [153,  0,  0]		# dark red
+        self.ColorPalette2[ 1] = [142, 67,240]		# violet
+        self.ColorPalette2[ 2] = [255,164,  5]		# gold
+        self.ColorPalette2[ 3] = [ 67,167,255]		# blue
+        self.ColorPalette2[ 4] = [255,168,197]		# pastel pink
+        self.ColorPalette2[ 5] = [157,204,  0]		# burnt grass green
+        self.ColorPalette2[ 6] = [  0,204,191]		# cyan
+        self.ColorPalette2[ 7] = [  0, 92, 49]		# dark green
+        self.ColorPalette2[ 8] = [255, 51, 64]		# red
+        self.ColorPalette2[ 9] = [194,  0,136]		# magenta
+        self.ColorPalette2[10] = [143,124,  0]		# muddy ocre
+        self.ColorPalette2[11] = [229,206, 20]		# yellow                FIXME: weakest at contrast vs white
+        self.ColorPalette2[12] = [ 66,102,  0]		# muddy green		FIXME: clashes with dark green
+        self.ColorPalette2[13] = [  0, 51,128]		# dark blue
+        self.ColorPalette2[14] = [ 25, 25, 25]		# dark gray
+        self.ColorPalette2[15] = [128,128,128]		# gray
 
-        self.recommendedSize = 26-7
+        # NOTE: When re-ordering colors, remember to change the names too in ColorDialog() below
+
 
     def getRecommendedSize(self):
         return self.recommendedSize
+
 
     #--- replacement for pg.intColor() as used in this project
 
@@ -110,32 +107,9 @@ class ColorPalette():
 
         if range <= self.recommendedSize:
 
-            #--- Skip some colors that don't work well with white background (adjust "recommendedSize" above when skipping more!)
-
-            index = index+1 if index>= 0 else index
-            index = index+1 if index>= 7 else index
-            index = index+1 if index>= 9 else index
-            index = index+1 if index>=18 else index
-            index = index+1 if index>=20 else index
-            index = index+1 if index>=23 else index
-            index = index+1 if index>=24 else index
-
-            #--- Force a RED-ish tone for the first trace
-            #
-            #    We shuffle around 3 colors to achieve this.  It weakens the properties of the
-            #    original table, but imitates the user experience of the algorithm for larger
-            #    palettes.
-
-            if index==1:
-                index = 17
-            elif index==2:
-                index = 1
-            elif index==17:
-                index = 2
-
             #--- Convert to native format
 
-            r,g,b = self.ColorAlphabet[index]
+            r,g,b = self.ColorPalette2[index]
             a     = 255
             color = QColor(r,g,b,a)
 
@@ -232,14 +206,14 @@ class ColorDialog(QtFixes.QDialog):
         
         clayout = QHBoxLayout()
         self.cbColor = QComboBox()
-        self.cbColor.addItem("Red",  0)
-        self.cbColor.addItem("Yellow",  1)
-        self.cbColor.addItem("Chartreuse",  2)
-        self.cbColor.addItem("Green",  3)
-        self.cbColor.addItem("Cyan",  4)
-        self.cbColor.addItem("Blue",  5)
-        self.cbColor.addItem("Purple",  6)
-        self.cbColor.addItem("Magenta",  7)          
+        self.cbColor.addItem("Dark red",  0)
+        self.cbColor.addItem("Violet",  1)
+        self.cbColor.addItem("Gold",  2)
+        self.cbColor.addItem("Blue",  3)
+        self.cbColor.addItem("Pastel pink",  4)
+        self.cbColor.addItem("Burnt grass green",  5)
+        self.cbColor.addItem("Cyan",  6)
+        self.cbColor.addItem("Dark green",  7)          
         self.cbColor.currentIndexChanged.connect(self.currentIndexChanged)
         self.cbColor.setCurrentIndex(colorInt)
         
@@ -510,7 +484,9 @@ class GraphWidget(QWidget):
             xaxis = range(startoffset, len(trace)+startoffset)
 
         if pen is None:
-            pen = pg.mkPen(self.colorPalette.intColor(self.acolor, self.colorPalette.getRecommendedSize()))
+            col = self.colorPalette.intColor(self.acolor, self.colorPalette.getRecommendedSize())
+            col.setAlphaF(0.95)
+            pen = pg.mkPen(col)
 
         p = self.pw.plot(x=xaxis, y=trace, pen=pen)
         self.setupPlot(p, 0, True, idString)
