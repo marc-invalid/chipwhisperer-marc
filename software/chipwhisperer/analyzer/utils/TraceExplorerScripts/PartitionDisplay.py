@@ -76,8 +76,10 @@ class DifferenceModeTTest(object):
                         ttest = np.subtract(means[bnum][i], means[bnum][j])
                         ttest /= np.sqrt((var[bnum][i]/num[bnum][i]) + (var[bnum][j]/num[bnum][j]))
 
-                        # if t-test is NaN indicates perhaps exact same data
-                        ttest = np.nan_to_num(ttest)
+                        # Working with unexpected input can lead to NaN (not a number) or +-inf.  Example: 1.0/0 = inf
+                        # Allowing inf leads to "number out of range" exceptions during graph display.
+                        # Therefore we replace ALL unexpected results with 0 (not just NaNs, as the original code did).
+                        ttest[~np.isfinite(ttest)] = 0
 
                         SADSeg[bnum] = np.add(SADSeg[bnum], np.abs(ttest) * scalingFactor)
 
