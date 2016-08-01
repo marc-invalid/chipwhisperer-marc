@@ -97,25 +97,24 @@ class PartitionEncKey(object):
         return key
 
 
-class PartitionTextOut_Bits_MSB(object):
+class PartitionTextOut_Bits_32BE(object):
 
-    sectionName = "Partition Based on TextOut 32 bit values (MSB)"
-    partitionType = "TextOut bit value MSB"
+    sectionName = "Partition Based on TextOut 32 bit values big-endian"
+    partitionType = "TextOut 32 bits big-endian"
 
     def getNumPartitions(self):
         return 2
 
     def getPartitionNum(self, trace, tnum):
         textout = trace.getTextout(tnum)
+
+        # assume big-endian byte order
+        ciphertext = (textout[0] << 24) | (textout[1] << 16) | (textout[2] << 8) | (textout[3] << 0)
+
+        # assume big-endian bit order
         guess = [0] * 32
-        for i in range(0, 8):
-            guess[i+ 0] = (textout[0] >> (7-i)) % 2
-        for i in range(0, 8):
-            guess[i+ 8] = (textout[1] >> (7-i)) % 2
-        for i in range(0, 8):
-            guess[i+16] = (textout[2] >> (7-i)) % 2
-        for i in range(0, 8):
-            guess[i+24] = (textout[3] >> (7-i)) % 2
+        for i in range(0, 32):
+            guess[i] = (ciphertext >> i) % 2
         return guess
 
 
@@ -163,7 +162,8 @@ class Partition(Parameterized):
                     },
                 }
 
-    supportedMethods = [PartitionRandvsFixed, PartitionEncKey, PartitionTextOut_Bits_MSB, PartitionRandDebug, PartitionHWIntermediate, PartitionHDLastRound]
+    supportedMethods = [PartitionRandvsFixed, PartitionEncKey, PartitionRandDebug, PartitionHWIntermediate, PartitionHDLastRound]
+    supportedMethods.append(PartitionTextOut_Bits_32BE)
 
     def __init__(self):
         self.setPartMethod(PartitionRandvsFixed)
