@@ -43,7 +43,7 @@ class WaveFormWidget(GraphWidget, ResultsBase, ActiveTraceObserver, Plugin):
 
         self.params.addChildren([
             {'name':'Redraw after Each', 'type':'bool', 'value':False},
-            {'name':'Trace Range', 'key':'tracerng', 'type':'range', 'limits':(0, 0), 'value':(0, 0)},
+            {'name':'Trace Range', 'key':'tracerng', 'type':'range', 'limits':(0, -1), 'value':(0, 7)},
             {'name':'Point Range', 'key':'pointrng', 'type':'rangegraph', 'limits':(0, 0), 'value':(0, 0), 'graphwidget':self},
             {'name':'Y Axis', 'type':'group', 'expanded':False, 'children':[
                 {'name':'Unity', 'type':'list', 'values':{"None":"", "Voltage":"V", "Current":"A"}, 'value':"", 'action':self.plotInputTrace},
@@ -69,6 +69,15 @@ class WaveFormWidget(GraphWidget, ResultsBase, ActiveTraceObserver, Plugin):
             lastTrace = -1
             lastPoint = -1
 
+            # Without a valid tracesource, we rather return than continue!
+            # Otherwise the user widget will be forced to trace range (0,-1) and then to (0,7).
+            # This used to happen a lot when interacting with the UI, and was very confusing.
+            #
+            # Side-effect: The widgets values are NOT ALWAYS in sync with the trace source,
+            #              and the limits must be validated at runtime.  In particular, see
+            #              plotInputTrace() below.
+            return
+
         traceRange = self.findParam('tracerng').getValue()
         self.findParam('tracerng').setLimits((0, lastTrace))
         self.findParam('tracerng').setValue((max(0, traceRange[0]), min(lastTrace, traceRange[1] if traceRange[1] >= 0 else 7)))
@@ -81,15 +90,29 @@ class WaveFormWidget(GraphWidget, ResultsBase, ActiveTraceObserver, Plugin):
         if not self.persistant:
             self.clearPushed()
 
-        tstart = self.findParam('tracerng').getValue()[0]
-        tend = self.findParam('tracerng').getValue()[1]
-        pstart = self.findParam('pointrng').getValue()[0]
-        pend = self.findParam('pointrng').getValue()[1]
-        yaxisScaleFactor = self.findParam(['Y Axis', 'Scale Factor']).getValue()
-        yaxisOffsetFactor = self.findParam(['Y Axis', 'Offset Factor']).getValue()
+        #--- Get valid trace/point ranges.  Extra effort is necessary because we allow the widgets to survive temporary de-sync
+
+        if not self._traceSource:
+            return
+
+        lastTrace = self._traceSource.numTraces()-1
+        lastPoint = self._traceSource.numPoints()-1
+
+        traceRange = self.findParam('tracerng').getValue()
+        pointRange = self.findParam('pointrng').getValue()
+
+        tstart = max(0, traceRange[0])
+        tend   = min(lastTrace, traceRange[1] if traceRange[1] >= 0 else 7)
+        pstart = max(0, pointRange[0])
+        pend   = min(lastPoint, pointRange[1] if pointRange[1] >= 0 else 0)
 
         if tend < tstart or pend < pstart:
             return
+
+        #---
+
+        yaxisScaleFactor = self.findParam(['Y Axis', 'Scale Factor']).getValue()
+        yaxisOffsetFactor = self.findParam(['Y Axis', 'Offset Factor']).getValue()
 
         try:
             if tend - tstart + 1 > 1:
