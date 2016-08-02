@@ -23,6 +23,8 @@
 #    along with chipwhisperer.  If not, see <http://www.gnu.org/licenses/>.
 import logging
 import os
+import shutil
+import glob
 import re
 import sys
 
@@ -280,6 +282,36 @@ class ProjectFormat(object):
             util.copyFile(t.config.configFilename(), destinationDir, keepOriginals)
             t.config.setConfigFilename(os.path.normpath(destinationDir + "/" + os.path.split(t.config.configFilename())[1]))
         self.sigStatusChanged.emit()
+
+
+    def clean(self, simulate=False):
+        logging.info("Cleaning Project%s:" % (" (SIMULATION)" if simulate else "") )
+
+        counter = 0
+
+        for indx, t in enumerate(self._traceManager.traceSegments):
+            path   = os.path.dirname(t.config.configFilename())
+            prefix = t.config.attr("prefix")
+
+            #--- Partition AUX files
+
+            for fname in glob.glob("%s/%sPartition*_aux_????*.npy" % (path, prefix)):
+                if not simulate:
+                    # logging.info("  Deleting: %s" % fname)
+                    try:
+                        os.remove(fname)
+                        counter += 1
+                    except OSError:
+                        logging.info("ERROR while deleting file %s" % fname)
+                        pass
+                else:
+                    logging.info("  Would delete: %s" % fname)
+
+        logging.info("%d file(s) %s from project" % (counter, ("would be deleted" if simulate else "deleted")))
+
+        if not simulate: self.sigStatusChanged.emit()
+        return counter
+
 
     def __del__(self):
         if __debug__: logging.debug('Deleted: ' + str(self))

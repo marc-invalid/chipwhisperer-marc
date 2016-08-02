@@ -317,6 +317,8 @@ class CWMainGUI(QMainWindow):
         self.projectMenu.addAction(self.traceManageAct)
         self.consolidateAct = QAction('&Consolidate', self, statusTip='Copy trace files to project directory.', triggered=self.consolidateDialog)
         self.projectMenu.addAction(self.consolidateAct)
+        self.cleanAct = QAction('Clean', self, statusTip='Delete intermediate files from project directory.', triggered=self.cleanDialog)
+        self.projectMenu.addAction(self.cleanAct)
         self.showProjFileAct = QAction('&Project File Editor (Text)', self, statusTip='Edit project file.', triggered=self.projEditDock.show)
         self.projectMenu.addAction(self.showProjFileAct)
 
@@ -556,6 +558,19 @@ class CWMainGUI(QMainWindow):
             self.api.project().consolidate(keepOriginals = True)
         elif ret == QMessageBox.No:
             self.api.project().consolidate(keepOriginals = False)
+
+    def cleanDialog(self):
+        msgBox = QMessageBox()
+        msgBox.setText("Clean will delete temporary and intermediate data from your project directory:\n"\
+                       "\n * Partition Comparison aux traces"\
+                       )
+        msgBox.setInformativeText("Really delete?")
+        msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msgBox.setDefaultButton(QMessageBox.No)
+        ret = msgBox.exec_()
+
+        if ret == QMessageBox.Yes:
+            self.api.project().clean(simulate=False)
 
     def updateStatusBar(self, message):
         if len(message) > 150:
