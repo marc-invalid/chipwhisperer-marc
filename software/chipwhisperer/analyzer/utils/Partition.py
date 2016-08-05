@@ -108,8 +108,11 @@ class PartitionTextOut_Bits_32BE(object):
     def getPartitionNum(self, trace, tnum):
         textout = trace.getTextout(tnum)
 
-        # assume big-endian byte order
-        ciphertext = (textout[0] << 24) | (textout[1] << 16) | (textout[2] << 8) | (textout[3] << 0)
+        if (textout is not None) and (len(textout) >= 3):
+            # assume big-endian byte order
+            ciphertext = (textout[0] << 24) | (textout[1] << 16) | (textout[2] << 8) | (textout[3] << 0)
+        else:
+            ciphertext = 0
 
         # assume big-endian bit order
         guess = [0] * 32
