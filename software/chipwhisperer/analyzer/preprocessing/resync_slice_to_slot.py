@@ -14,9 +14,9 @@ from ._base import PreprocessingBase
 
 class ResyncSliceToSlot(PreprocessingBase):
     _name = "Resync: Slice to Slot"
-    _description = "For many similar rounds with slight clock drift (RC OSC)."\
-                   " Chops the drifting input to slices and places them into equidistant slots."\
-                   " MUST have inputs aligned at left edge of ref window!"
+    _description = "For inputs with slight clock drift (RC OSC)."\
+                   " Chops the input to slices and places them into equidistant slots."\
+                   " NOTE: Align inputs at left edge of ref window!"
 
     def __init__(self, traceSource=None):
         PreprocessingBase.__init__(self, traceSource)
@@ -51,40 +51,15 @@ class ResyncSliceToSlot(PreprocessingBase):
         self.jitter_slice       = 0						# (int sample pts) max deviation left/right between neighbor slices
         self.jitter_total       = 0						# (int sample pts) max deviation from ideal
 
-        # TODO: jitter_total does not contribute anything to the matching quality.
-        #       Instead, as soon as it kicks in, it will DEGRADE quality because the
-        #       range window can become very tight.  At the extreme of 0 wiggle room,
-        #       every input will be accepted as valid and the matching algorithm is
-        #       effectively disabled.
-        #
-        #       We might want to change this config, or drop it, or enhance it.
-        #
-        #       It could be useful to bridge an erasure, where the cycles cannot
-        #       be detected because they are not present.  For this case, we could
-        #       introduce a measure to tell "valid" matches from "invalid" ones,
-        #       and stick to a rigid slice spacing during the erasure.  The
-        #       total may help to keep everything in sync until after the erasure.
-        #
-        #       Also possible:  Use the total jitter as a no-go detector.  Inputs
-        #       that violate it are discarded as "freak" inputs.
-
-
-        # FIXME: check the code for wiggle room 0, where the loop executes empty.
-        #        that will probably reuse the previous rounds' data, or fail when
-        #        there is no previous..
-
-        #---
+        #--- output (placer)
 
         self.slot_width     = 0							# 0=auto -> use self.slicewidth_int
 
+        #--- other config
+
         self.debug_print    = False
 
-        # TODO: The windows are currently treated as "start to end, inclusive" for these reaons:
-        #         1) the default 0,0 is not an invalid window
-        #         2)
-        #
-        #       At hindsight, about 1): 0,0 is probably better off to be interpreted as "empty"
-        #       rather than "len=1". should probably 
+        #---
 
         self.params.addChildren([
 
@@ -99,38 +74,35 @@ class ResyncSliceToSlot(PreprocessingBase):
             {'name':'  # of ref slices',        'key':'ref_divs', 'type':'int', 'value':1,
                          'help': "Number of ref slices:\n"\
                                  "---------------------\n\n"
-                                 "Specifies how many repeated cycles have been highlighted in the reference window.\n"\
+                                 "Specifies how many cycles (or shapes or rounds) have been highlighted in the reference window.\n"\
                                  "\n"\
-                                 "The window will be chopped into this many equally sized slices, "\
-                                 "and each of them is a valid reference while matching.\n"\
+                                 "The window will be chopped into this many slices, "\
+                                 "and each of them becomes a valid reference.\n"\
                                  "\n"\
-                                 "Values >1 are particularily useful when multiple different "\
-                                 "shapes are involved. Present all of them in the reference window.\n"\
+                                 " * 1 is best for most cases.\n"\
                                  "\n"\
-                                 "NOTE: Perfect alignment of all reference slices is required for good results. "\
-                                 "If necessary, fabricate the reference from snippets or simulation.\n",
+                                 " * >1 is useful when multiple different shapes are involved. "\
+                                 "Present all of them in the reference window, and the best match will be used.\n"\
+                                 "\n"\
+                                 "Avoid including several seemingly identical shapes. "\
+                                 "Tiny registration differences will translate into output jitter. "\
+                                 "If necessary, fabricate a reference from cherry-picked snippets.\n",
                           'helpwnd': None,
                           'action':self.updateScript},
 
-            {'name':'  Slice width (Pts)',      'key':'ref_slicewidth', 'type':'float', 'readonly':True, 'value':0.0, 'action':self.updateScript},
+            {'name':'  Slice width (Pts)',        'key':'ref_slicewidth', 'type':'float', 'readonly':True, 'value':0.0, 'action':self.updateScript},
 
-            {'name':'  Process limits (0=all)', 'key':'ref_limit', 'type':'rangegraph', 'graphwidget':ResultsBase.registeredObjects["Trace Output Plot"],
-                         'help': "Process limits:\n"\
-                                 "---------------\n\n"
-                                 "Specifies where the slices are to be found (in the reference trace). "\
+            {'name':'  Detection limit (0=all)', 'key':'ref_limit', 'type':'rangegraph', 'graphwidget':ResultsBase.registeredObjects["Trace Output Plot"],
+                         'help': "Detection limit:\n"\
+                                 "----------------\n\n"
+                                 "Specifies where similar slices can be found (in the ref trace). "\
                                  "0,0 means 'whole trace'.\n"\
                                  "\n"\
-                                 "Highlight all rounds plus a bit of padding left and right. "\
-                                 "The padding should be less than slice-width minus jitter allowance.\n"\
+                                 "Highlight the relevant area plus a slight bit of padding.\n"\
                                  "\n"\
-                                 "The limit is used to find the number of rounds (by matching). "\
-                                 "Afterwards it is disregarded and only the number of rounds is used. "\
-                                 "Thus, slower traces will be processed beyond the limit "\
-                                 "and faster ones finish short of it.\n"\
-                                 "\n"\
-                                 "Any remainder past the matched content will be appended as-is.\n"\
-                                 "\n"\
-                                 "Check the Debug INFO Console to see how many rounds have been detected.\n",
+                                 "The limit only applies to the ref trace. "\
+                                 "For all other inputs, the number of detected slices is used instead "\
+                                 "(to extract just as many slices).\n",
                                                 'action':self.updateScript, 'value':(0, 0), 'default':(0, 0)},
 
             #--- define and restrict sync algorithm
@@ -140,7 +112,23 @@ class ResyncSliceToSlot(PreprocessingBase):
                                                 'action':self.updateScript},
 
             {'name':'  Jitter/slice (max %)',   'key':'jitter_slice', 'type':'float', 'value':10, 'default':10, 'limits':(0, 100), 'action':self.updateScript},
-            {'name':'  Jitter/total (max %)',   'key':'jitter_total', 'type':'float', 'value':10, 'default':10, 'limits':(0, 100), 'action':self.updateScript},
+            {'name':'  Jitter/total (max %)',   'key':'jitter_total', 'type':'float', 'value':10, 'default':10, 'limits':(0, 100), 'action':self.updateScript,
+                         'help': "Jitter/total:\n"\
+                                 "-------------\n\n"
+                                 "Specifies how far away slices may drift from their ideal positions.\n"\
+                                 "\n"\
+                                 "Think: max size difference of smallest/largest trace vs reference trace.\n"
+
+#                                 "\n"\
+#                                 "Technical note:\n"\
+#                                 "When the actual drift approaches the allowance limit, the detection window is tightned up. "\
+#                                 "Once completely exhausted, detection fails (no more neighbor slices).\n"\
+#                                 "\n"\
+#                                 "This behavior is subject to change. "\
+#                                 "It degrades match quality when operating near the limit. "\
+#                                 "Future versions will probably allow/fail without tightening.\n"
+# TODO: implement this proposal
+                                                 },
 
             #--- output algorithm
 
@@ -196,8 +184,9 @@ class ResyncSliceToSlot(PreprocessingBase):
 
         ref_window = self.findParam('ref_window').getValue()
         ref_limit  = self.findParam('ref_limit' ).getValue()
-#        ref_limit = (min(ref_limit[0], ref_window[0]), max(ref_limit[1],ref_window[1]))
-#        self.findParam('ref_limit').setValue(ref_limit, blockAction=True)
+        if (ref_limit != (0,0)) and (ref_window != (0,0)):
+            ref_limit = (min(ref_limit[0], ref_window[0]), max(ref_limit[1],ref_window[1]))
+            self.findParam('ref_limit').setValue(ref_limit, blockAction=True)
 
         ref_divs = self.findParam('ref_divs').getValue()
         ref_divs = max(1, ref_divs)
@@ -316,7 +305,7 @@ class ResyncSliceToSlot(PreprocessingBase):
                         # print "PAD = %d" % pad
                         slot = np.append(trace[slice_start:slice_stop], np.zeros(pad))
 
-                if (slot_start < outlen) and (len(slot)==slot_len) and (slot_stop <= outlen):
+                if (slot_start >= 0) and (slot_stop <= outlen) and (len(slot)==slot_len):
                     outtrace = np.concatenate((outtrace[0:slot_start], slot, outtrace[slot_stop:outlen]))
                     # FIXME: this creates lots of copies and is slow.  need to overwrite the portion instead!
 
@@ -396,6 +385,13 @@ class ResyncSliceToSlot(PreprocessingBase):
                     if (direction == 1) and (cycle_current >= self.match_cycles):
                         break
 
+                    if ((pos_slot+slot_width) < 0) or (pos_slot >= len(trace)):
+                        # Depending on size ratio slice/slot, the output trace can grow considerably larger
+                        # than the input.  CW currently does not support this, so we will skip all slices
+                        # that fall completely outside of the supported range.
+                        # TODO: Enhance CW to support len(outtrace) > len(intrace)
+                        break
+
                 #--- determine acceptable window for this candidate
 
                 range_start = max(pos_actual-self.jitter_slice, pos_ideal-self.jitter_total)
@@ -412,6 +408,7 @@ class ResyncSliceToSlot(PreprocessingBase):
                     break
 
                 if range_size == 0:
+                    # normally this is result of jitter/total exhausted
                     if self.debug_print: print "Slice-to-Slot WARNING: range_size is 0, there is no wiggle room left!"
                     if self.debug_print: print "### for now interpreted as NO-GO -> aborting ###"
                     break
