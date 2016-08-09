@@ -331,6 +331,15 @@ class PartitionDisplay(Parameterized, AutoScript):
         self.doRedraw = True
         self.redrawPlot()
 
+    def setByteShowEvenOdd(self, show_even):
+        self.doRedraw = False
+        for i, t in enumerate(self.byteNumAct):
+            status = show_even if (i%2 == 0) else not show_even
+            t.defaultWidget().setChecked(status)
+            self.setBytePlot(i, status)
+        self.doRedraw = True
+        self.redrawPlot()
+
     def redrawPlot(self):
         self.graph.clearPushed()
 
@@ -571,7 +580,7 @@ class PartitionDisplay(Parameterized, AutoScript):
         if hasattr(self, 'enabledbytes') and len(self.enabledbytes) == self.numKeys:
             pass
         else:
-            self.enabledbytes = [False] * self.numKeys
+            self.enabledbytes = [True] * self.numKeys
 
         self.doRedraw = True
 
@@ -589,16 +598,22 @@ class PartitionDisplay(Parameterized, AutoScript):
             ql.clicked[bool].connect(partial(self.setBytePlot, i))
             self.byteNumAct.append(qa)
 
-        byteNumAllOn = QAction('All On', self.graph)
-        byteNumAllOff = QAction('All Off', self.graph)
+        byteNumAllOn = QAction('All', self.graph)
+        byteNumAllOff = QAction('None', self.graph)
         byteNumAllOn.triggered.connect(partial(self.setByteAll, True))
         byteNumAllOff.triggered.connect(partial(self.setByteAll, False))
+        byteNumEven = QAction('Even', self.graph)
+        byteNumOdd  = QAction('Odd', self.graph)
+        byteNumEven.triggered.connect(partial(self.setByteShowEvenOdd, True))
+        byteNumOdd.triggered.connect(partial(self.setByteShowEvenOdd, False))
 
         self.bselection.clear()
         for i in range(0, self.numKeys):
             self.bselection.addAction(self.byteNumAct[i])
         self.bselection.addAction(byteNumAllOn)
         self.bselection.addAction(byteNumAllOff)
+        self.bselection.addAction(byteNumEven)
+        self.bselection.addAction(byteNumOdd)
         self.graph.setPersistance(True)
 
         self.poi.setDifferences(self.SADList)
