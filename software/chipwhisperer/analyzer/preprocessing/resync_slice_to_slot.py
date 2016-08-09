@@ -33,6 +33,8 @@ class ResyncSliceToSlot(PreprocessingBase):
         self.ref_limit_start      = 0
         self.ref_limit_stop       = 1
 
+        self.sync_method          = None
+
         self.jitter_slice_percent = 0
         self.jitter_total_percent = 0
 
@@ -43,6 +45,7 @@ class ResyncSliceToSlot(PreprocessingBase):
         self.sliceshapes        = None						# list of up to self.ref_div slices
         self.slicewidth_int     = 0						# (int)   sample points per sliceshape
         self.slicewidth_exact   = 0						# (float) exact width, useful to calc pos
+        self.slicepeaks         = None						# for each slice, pos of min/max peak (if needed for fine-tuning)
 
         self.match_anchor_pos   = 0						# starting point for match, all inputs are aligned here
         self.match_anchor_cycle = 0						# anchor is not necessarily at the first cycle
@@ -51,7 +54,7 @@ class ResyncSliceToSlot(PreprocessingBase):
         self.jitter_slice       = 0						# (int sample pts) max deviation left/right between neighbor slices
         self.jitter_total       = 0						# (int sample pts) max deviation from ideal
 
-        #--- output (placer)
+        #--- output (placer: trim/align)
 
         self.slot_width     = 0							# 0=auto -> use self.slicewidth_int
 
@@ -79,9 +82,9 @@ class ResyncSliceToSlot(PreprocessingBase):
                                  "The window will be chopped into this many slices, "\
                                  "and each of them becomes a valid reference.\n"\
                                  "\n"\
-                                 " * 1 is best for most cases.\n"\
+                                 " * **1** is best for most cases.\n"\
                                  "\n"\
-                                 " * >1 is useful when multiple different shapes are involved. "\
+                                 " * **>1** is useful when multiple different shapes are involved. "\
                                  "Present all of them in the reference window, and the best match will be used.\n"\
                                  "\n"\
                                  "Avoid including several seemingly identical shapes. "\
@@ -107,9 +110,27 @@ class ResyncSliceToSlot(PreprocessingBase):
 
             #--- define and restrict sync algorithm
 
-            {'name':'Match method',             'key':'correlator', 'type':'list',
-                                                'values':{"Sum-of-Difference":"sad"}, 'default':"sad", 'value':"sad",
-                                                'action':self.updateScript},
+            {'name':'Match method',             'key':'match_method', 'type':'list',
+                                                'values':{"Sum-of-Difference":"sad"},					# TODO: add other options, like PLL etc
+                                                'default':"sad", 'value':"sad", 'action':self.updateScript},
+
+            {'name':'  Sync fine-tune',         'key':'sync_method', 'type':'list', 'action':self.updateScript,
+                                                'values':{"(no change)":"None", "Peak (max)":"peak_max", "Peak (min)":"peak_min"},
+                                                'default':"None", 'value':"None",
+                         'help': "Sync fine-tune:\n"\
+                                 "---------------\n\n"
+                                 "This setting can further modify the sync of detected slices versus ref slices (after matching)."\
+                                 "\n"\
+                                 " * **(no change):** Use the position as obtained from the match method. "\
+                                 " This is generally a good choice.\n"\
+                                 "\n"\
+                                 " * **Peak (max)**: Sync highest peak with ref slice peak.\n"\
+                                 "\n"\
+                                 " * **Peak (min)**: Sync lowest peak with ref slice peak.\n"\
+                                 "\n"\
+                                 "TODO: This function has a very small jitter allowance. Future versions "\
+                                 "will probably honor jitter/slice instead.\n"
+                                                 },
 
             {'name':'  Jitter/slice (max %)',   'key':'jitter_slice', 'type':'float', 'value':10, 'default':10, 'limits':(0, 100), 'action':self.updateScript},
             {'name':'  Jitter/total (max %)',   'key':'jitter_total', 'type':'float', 'value':10, 'default':10, 'limits':(0, 100), 'action':self.updateScript,
@@ -130,30 +151,64 @@ class ResyncSliceToSlot(PreprocessingBase):
 # TODO: implement this proposal
                                                  },
 
+            #--- Output: Trim
+
+            {'name':'Trim method',             'key':'trim_method', 'type':'list', 'action':self.updateScript,
+                         'help': "Trim method:\n"\
+                                 "------------\n\n"
+                                 "Specifies which parts of detected slices may be placed into the output slot.\n"\
+                                 "\n"\
+                                 " * **(no change):** Everthing, including surrounding samples that were not matched\n"\
+                                 " * **Truncate:** Just the matched slice / range\n"\
+                                 " * **Sum to Peak:** Sum all samples of the slice / range into a single peak\n",
+                                                'values':{"(no change)":"none", "Truncate":"truncate", "Sum to Peak":"sum"},
+                                                'default':"truncate", 'value':"truncate"
+                                               },
+            {'name':'  Range from',            'key':'trim_from', 'type':'int', 'value':0, 'action':self.updateScript},
+            {'name':'  Range to (0=all)',      'key':'trim_to',   'type':'int', 'value':0, 'action':self.updateScript},
+
             #--- output algorithm
 
-            {'name':'Place method',             'key':'placer', 'type':'list', 'action':self.updateScript,
-                         'help': "Place method:\n"\
-                                 "-------------\n\n"
-                                 "Specifies how to place input slices into output slots.\n"\
+            {'name':'Output method',             'key':'output_method', 'type':'list', 'action':self.updateScript,
+                         'help': "Output method:\n"\
+                                 "--------------\n\n"
+                                 "Specifies which parts of detected slices may be placed into the output slot.\n"\
                                  "\n"\
-                                 " * Copy generously: Copy from input until the slot is filled, possibly duplicating data.\n"\
-                                 " * Copy truncated: Copy just the input slice (slice-width), remainders filled with 0.\n"\
-                                 "\n"\
-                                 "FIXME: Some placer options (including this one) are disabled because they are not yet implemented.\n",
-                                                'values':{"Copy generously":"copy_fill", "Copy truncated":"copy_trunc"},
-                                                'default':"copy_trunc", 'value':"copy_trunc",
-                                               'readonly':True   # FIXME: disabled because not yet implemented
+                                 " * **Copy:** Copy sample values\n"\
+
+                                 " * **Peak sum:** Sum all samples of the slice / range into a single peak\n"\
+#                                 " * **Peak sum:** Single peak, sum of all sample values\n"\
+
+                                 " * **Peak sum with min==0:** Like above, with an offset applied for min to be zero\n"\
+                                 " * **Peak abs(max-min):** Single peak representing difference of min and max\n",
+
+                                                'values':{"Copy":"copy", "Peak sum":"peak_sum", "Peak sum with min==0":"peak_sum_above_min",
+                                                          "Peak abs(max-min)":"peak_minmax"},
+                                                'default':"copy", 'value':"copy"
                                                },
+
+#            {'name':'Place method',             'key':'placer', 'type':'list', 'action':self.updateScript,
+#                         'help': "Place method:\n"\
+#                                 "-------------\n\n"
+#                                 "Specifies how to place input slices into output slots.\n"\
+#                                 "\n"\
+#                                 " * **Copy generously:** Copy from input until the slot is filled, possibly duplicating data.\n"\
+#                                 " * **Copy exactly:** Copy just the input slice (slice-width), remainders filled with 0.\n"\
+#                                 " * **Range extract:** Copy only part of the input slice, as specified below (from/to relative to ref slice)\n"\
+#                                 " * **Range sum:** Extract range from slice, add all values and output them as single peak (slot center)\n",
+#                                                'values':{"Copy generously":"copy_fill", "Copy truncated":"copy_trunc", "Range extract":"copy_range", "Range sum":"sum"},
+#                                                'default':"copy_trunc", 'value':"copy_trunc"
+#                                               },
+
 
             {'name':'  Slot width (0=auto)',   'key':'slot_width', 'type':'int', 'value':0, 'action':self.updateScript},
             {'name':'  Alignment',             'key':'slot_align', 'type':'list', 'action':self.updateScript,
+                                               'readonly':True,   # FIXME: disabled because not yet implemented
                                                'values':{"Left":"left", "Center":"center", "Right":"right"},
-                                               'default':"left", 'value':"left",
-                                               'readonly':True   # FIXME: disabled because not yet implemented
+                                               'default':"left", 'value':"left"
                                                },
 
-            {'name':'  Copy remainder',        'key':'copyremainder', 'type':'bool', 'default':False, 'value':False, 'action':self.updateScript,
+            {'name':'Copy remainder',          'key':'copyremainder', 'type':'bool', 'default':False, 'value':False, 'action':self.updateScript,
                                                'readonly':True   # FIXME: disabled because not yet implemented
                                                }
 
@@ -207,18 +262,22 @@ class ResyncSliceToSlot(PreprocessingBase):
         #---
 
         self.addFunction("init", "setReference",
-                         "ref_trace=%d, ref_window=(%d,%d), ref_divs=%d, ref_limit=(%d,%d), jitter_slice=%f, jitter_total=%f" %
+                         "ref_trace=%d, ref_window=(%d,%d), ref_divs=%d, ref_limit=(%d,%d), sync_method='%s', jitter_slice=%f, jitter_total=%f" %
                          (self.findParam('ref_trace').getValue(),
                           ref_window[0], ref_window[1],
                           self.findParam('ref_divs').getValue(),
                           ref_limit[0], ref_limit[1],
+                          self.findParam('sync_method').getValue(),
                           self.findParam('jitter_slice').getValue(),
                           self.findParam('jitter_total').getValue()
                          ))
 
-        self.addFunction("init", "setPlacer",
-                         "method='%s', slot_width=%d, slot_align='%s', copyremainder=%s" %
-                         (self.findParam('placer').getValue(),
+        self.addFunction("init", "setOutput",
+                         "trim_method='%s', trim_range=(%d,%d), output_method='%s', slot_width=%d, slot_align='%s', copyremainder=%s" %
+                         (self.findParam('trim_method').getValue(),
+                          self.findParam('trim_from').getValue(),
+                          self.findParam('trim_to').getValue(),
+                          self.findParam('output_method').getValue(),
                           self.findParam('slot_width').getValue(),
                           self.findParam('slot_align').getValue(),
                           self.findParam('copyremainder').getValue()
@@ -230,7 +289,7 @@ class ResyncSliceToSlot(PreprocessingBase):
 
 
 
-    def setReference(self, ref_trace=0, ref_window=(0, 0), ref_divs=1, ref_limit=(0, 0), jitter_slice=0, jitter_total=0):
+    def setReference(self, ref_trace=0, ref_window=(0, 0), ref_divs=1, ref_limit=(0, 0), sync_method=None, jitter_slice=0, jitter_total=0):
 
         self.ref_trace        = ref_trace
         self.ref_window_start = ref_window[0]
@@ -240,14 +299,18 @@ class ResyncSliceToSlot(PreprocessingBase):
         self.ref_limit_start  = ref_limit[0]
         self.ref_limit_stop   = ref_limit[1]
 
+        self.sync_method      = sync_method
+
         self.jitter_slice_percent = jitter_slice
         self.jitter_total_percent = jitter_total
 
         self.init()
 
 
-    def setPlacer(self, method='copy_fill', slot_width=0, slot_align='center', copyremainder=True):
-        self.placer_method = method
+    def setOutput(self, trim_method='none', trim_range=(0,0), output_method='copy', slot_width=0, slot_align='center', copyremainder=True):
+        self.trim_method   = trim_method
+        self.trim_range    = trim_range
+        self.output_method = output_method
         self.slot_width    = slot_width
         self.slot_align    = slot_align
         self.copyremainder = copyremainder
@@ -281,10 +344,11 @@ class ResyncSliceToSlot(PreprocessingBase):
 
             for i in range(0, len(matches)):
 
+                #--- get slice/slot info
+
                 slice_start = matches[i][1]
                 slice_stop  = matches[i][1] + self.slicewidth_int
-    
-                slice_len   = self.slicewidth_int
+                slice_len   = slice_stop - slice_start
 
                 slot_len    = slot_width
                 slot_start  = matches[i][0]
@@ -294,16 +358,86 @@ class ResyncSliceToSlot(PreprocessingBase):
 
                 if self.debug_print: print "Slot=%d Src=%d Cycle=%d width=%d" % (matches[i][0], matches[i][1], cycle, slot_width)
 
-                # FIXME: right now we just left-align and copy_trunc.  implement the rest!
+                #--- trim slice to range (optional)
 
-                if True:
-                    # left-align
-                    if slice_len >= slot_len:
-                        slot = trace[slice_start:(slice_start + slot_len)]
+                trim_from  = min(self.trim_range[0], self.slicewidth_int)
+                trim_to    = min(self.trim_range[1], self.slicewidth_int)
+                if trim_to == 0:
+                    trim_to = self.slicewidth_int
+                trim_from  = min(trim_from, trim_to)
+
+                trim_start  = slice_start + max(trim_from, 0)
+                trim_stop   = slice_start + min(trim_to, slice_stop - slice_start)
+
+                slice_start = trim_start
+                slice_stop  = trim_stop
+                slice_len   = slice_stop - slice_start
+
+#                #--- apply range to slice
+#
+#                if (self.trim_method == "sum"):
+#
+#                if (self.trim_method == "truncate"):
+#                    slice_start = min(slice_start, trim_start 
+#                    if ((slice_stop-slice_start < trim_stop)
+#
+#                elif (self.trim_method == "sum"):
+#
+#                else:
+#                    if (slice_len > slot_len):
+#                        if (self.
+                    
+
+
+                #---
+
+                if (self.output_method[:4] == 'peak'):
+
+                    #--- calc peak height
+
+                    if (self.output_method == 'peak_minmax'):
+                        peak  = np.nanmax(trace[slice_start:slice_stop]) - np.nanmin(trace[slice_start:slice_stop])
+
                     else:
-                        pad = slot_len - slice_len
-                        # print "PAD = %d" % pad
-                        slot = np.append(trace[slice_start:slice_stop], np.zeros(pad))
+                        peak  = np.nansum(trace[slice_start:slice_stop])
+                        peak /= max(slice_len, 1)
+
+                        if (self.output_method == 'peak_sum_above_min'):
+                            peak -= np.nanmin(trace[slice_start:slice_stop])
+
+                    #--- create output slot
+
+                    slot = np.zeros(slot_len)
+                    if self.slot_align == 'center':
+                        slot[slot_len/2] = peak
+                    elif self.slot_align == 'right':
+                        slot[slot_len-1] = peak
+                    else:
+                        slot[0] = peak
+
+                else:
+
+                    #---
+
+                    # FIXME: right now we just left-align and copy_trunc.  implement the rest!
+
+                    if self.slot_align == 'left':
+                        # left-align
+                        if slice_len >= slot_len:
+                            slot = trace[slice_start:(slice_start + slot_len)]
+                        else:
+                            pad = slot_len - slice_len
+                            # print "PAD = %d" % pad
+                            slot = np.append(trace[slice_start:slice_stop], np.zeros(pad))
+
+                    else:
+                        # FIXME: not yet implemented
+                        slot = np.zero(slot_len)
+
+
+
+
+                #--- place slot into output trace
 
                 if (slot_start >= 0) and (slot_stop <= outlen) and (len(slot)==slot_len):
                     outtrace = np.concatenate((outtrace[0:slot_start], slot, outtrace[slot_stop:outlen]))
@@ -311,8 +445,6 @@ class ResyncSliceToSlot(PreprocessingBase):
 
                 # else:
                     if self.debug_print: print "WARN over the limits: start=%d len=%d stop=%d outlen=%d slotlen=%d" % (slot_start, len(slot), slot_stop, outlen, slot_len)
-
-
 
                     # TODO: We'd like to EXTEND the trace size here, instead of skipping slices that don't fit.
                     #       Remember that slots tend to be larger than slices, so the trace will grow.
@@ -451,12 +583,30 @@ class ResyncSliceToSlot(PreprocessingBase):
                         bestmatch_pos   = match_pos
                         bestmatch_slice = slice
 
+                pos_best   = bestmatch_pos
+
+                #--- Sync fine-tune (min/max peak)
+
+                if (examine != True):
+                    if (self.sync_method=='peak_min') or (self.sync_method=='peak_max'):
+                        if (self.sync_method=='peak_min'):
+                            peak_trace = np.argmin(trace[pos_best:(pos_best+self.slicewidth_int)])
+                            peak_slice = self.slicepeaks[slice][0]
+                        if (self.sync_method=='peak_max'):
+                            peak_trace = np.argmax(trace[pos_best:(pos_best+self.slicewidth_int)])
+                            peak_slice = self.slicepeaks[slice][1]
+                        peak_adjust = peak_slice - peak_trace
+                        if (abs(peak_adjust) < 10):
+                            pos_best -= peak_adjust
+                        # FIXME: make the "10" configurable, and make sure that it can't slip backwards one round (creating an infinite loop)
+
+                #---
+
                 # print "===> BEST SAD for round %d is slice %d: pos=%d val=%f" % (cycle_counter, bestmatch_slice, bestmatch_pos, bestmatch_value)
 
                 # TODO: Track jitter and match quality, and report after processing
                 # TODO: Track how many times each ref slice is used, and report after processing
 
-                pos_best   = bestmatch_pos
 
                 #--- record result
 
@@ -535,6 +685,7 @@ class ResyncSliceToSlot(PreprocessingBase):
         #--- extract ref slices
 
         self.sliceshapes = []	 						# FIXME: this is a python list.  should we use a numpy array?
+        self.slicepeaks  = []
 
         for slice in range(0, self.ref_divs):
             start = self.ref_window_start + int((slice * self.slicewidth_exact) + 0.5)	# TODO: rounding tracks the left edge, consider tracking the center?
@@ -545,7 +696,12 @@ class ResyncSliceToSlot(PreprocessingBase):
                 print "SLICE prepare: Ignored slice #%d because trace length reached (%d>%d)" % (slice, stop, len(trace))
                 break
             self.sliceshapes.append(trace[start:stop])
-            # print "SLICE prepare: Added ref slice #%d (%d-%d)" % (slice, start, stop)
+
+            peak_min = np.argmin(trace[start:stop])
+            peak_max = np.argmax(trace[start:stop])
+            self.slicepeaks.append((peak_min, peak_max))
+
+            # print "SLICE prepare: Added ref slice #%d (%d-%d) with peaks min=%d max=%d" % (slice, start, stop, peak_min, peak_max)
 
         #--- ### MATCHING
 
