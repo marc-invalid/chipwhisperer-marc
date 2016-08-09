@@ -24,15 +24,15 @@ HW8Bit = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3,
           5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6,
           7, 7, 8]
 
-def getHW(var):
+def keeloqGetHW(var):
     hw = 0
     while var > 0:
         hw = hw + HW8Bit[var % 256]
         var = var >> 8
     return hw
 
-def getHD(var1, var2):
-    return getHW(var1 ^ var2)
+def keeloqGetHD(var1, var2):
+    return keeloqGetHW(var1 ^ var2)
 
 
 #--- KEELOQ: Non-Linear-Function 0x3A5C742E in algebraic normal form
@@ -64,11 +64,11 @@ def keeloqDecryptKeybit(data, keybit):
 
 def keeloqEncryptKeybitHD(data, keybit):
     encrypt = keeloqEncryptKeybit(data, keybit)
-    return encrypt, getHD(data, encrypt)
+    return encrypt, keeloqGetHD(data, encrypt)
 
 def keeloqDecryptKeybitHD(data, keybit):
     decrypt = keeloqDecryptKeybit(data, keybit)
-    return decrypt, getHD(data, decrypt)
+    return decrypt, keeloqGetHD(data, decrypt)
 
 
 #--- KEELOQ: Test
