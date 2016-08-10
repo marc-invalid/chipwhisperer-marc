@@ -363,6 +363,7 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         self.addGroup("displayPartitionStats")
         self.addVariable('displayPartitionStats', 'ted', 'self.')
+        self.addFunction('displayPartitionStats', 'initPartitionFromAttack', 'userscript=self', obj='ted')
         self.addFunction('displayPartitionStats', 'setTraceSource', 'UserScript.traces', obj='ted')
         self.addFunction('displayPartitionStats', 'parent.getProgressIndicator', '', 'progressBar', obj='ted')
         self.addFunction('displayPartitionStats', 'partObject.setPartMethod', partMethodStr, obj='ted')
@@ -390,6 +391,18 @@ class PartitionDisplay(Parameterized, AutoScript):
         #Check if this updateScript was called as a result of showing the TraceExplorer window
         if ignored == "traceexplorer_show":
             self._autoscript_init = True
+
+
+    # Permit an ATTACK module to pass GUI config values down to the PARTITION module,
+    # for example using global vars in the CoreAPI.
+    # TODO: A better way of passing values would be to encode them into the userscript
+    #       (requiring solution of a few issues first).
+    def initPartitionFromAttack(self, userscript=None):
+        attack = userscript.cwagui.attackScriptGen.getAttack()
+        if (attack is not None) and hasattr(attack, "initPartitionFromAttack"):
+            print "Attack found and calling now!"
+            attack.initPartitionFromAttack(userscript)
+
 
     def generatePartitionStats(self, partitionData={"partclass":None, "partdata":None}, saveFile=False, loadFile=False,  tRange=(0, -1), progressBar=None):
 
