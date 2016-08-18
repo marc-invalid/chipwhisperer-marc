@@ -137,6 +137,8 @@ class CPAProgressiveOneSubkey(object):
             #    print "WARNING: sumden small"
 
             diffs[key] = sumnum / np.sqrt(sumden)
+            # MARC: avoid NaN/inf results
+            diffs[key][~np.isfinite(diffs[key])] = 0
 
             if progressBar:
                 progressBar.updateStatus(pbcnt, (self.totalTraces-numtraces, self.totalTraces-1, bnum))
