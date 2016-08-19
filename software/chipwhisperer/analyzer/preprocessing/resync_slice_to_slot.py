@@ -8,6 +8,7 @@
 
 import numpy as np
 
+from chipwhisperer.common.utils import util
 from chipwhisperer.common.results.base import ResultsBase
 from ._base import PreprocessingBase
 
@@ -151,17 +152,18 @@ class ResyncSliceToSlot(PreprocessingBase):
 # TODO: implement this proposal
                                                  },
 
-            #--- Output: Trim
+            #--- Trim method
 
             {'name':'Trim method',             'key':'trim_method', 'type':'list', 'action':self.updateScript,
+                                               'readonly':True,   # FIXME: disabled because not yet implemented
                          'help': "Trim method:\n"\
                                  "------------\n\n"
                                  "Specifies which parts of detected slices may be placed into the output slot.\n"\
                                  "\n"\
                                  " * **(no change):** Everthing, including surrounding samples that were not matched\n"\
                                  " * **Truncate:** Just the matched slice / range\n"\
-                                 " * **Sum to Peak:** Sum all samples of the slice / range into a single peak\n",
-                                                'values':{"(no change)":"none", "Truncate":"truncate", "Sum to Peak":"sum"},
+                                 "\nFIXME: Currently only truncate has been implemented.\n",
+                                                'values':{"(no change)":"none", "Truncate":"truncate"},
                                                 'default':"truncate", 'value':"truncate"
                                                },
             {'name':'  Range from',            'key':'trim_from', 'type':'int', 'value':0, 'action':self.updateScript},
@@ -175,36 +177,17 @@ class ResyncSliceToSlot(PreprocessingBase):
                                  "Specifies which parts of detected slices may be placed into the output slot.\n"\
                                  "\n"\
                                  " * **Copy:** Copy sample values\n"\
-
-                                 " * **Peak sum:** Sum all samples of the slice / range into a single peak\n"\
-#                                 " * **Peak sum:** Single peak, sum of all sample values\n"\
-
-                                 " * **Peak sum with min==0:** Like above, with an offset applied for min to be zero\n"\
-                                 " * **Peak abs(max-min):** Single peak representing difference of min and max\n",
-
-                                                'values':{"Copy":"copy", "Peak sum":"peak_sum", "Peak sum with min==0":"peak_sum_above_min",
-                                                          "Peak abs(max-min)":"peak_minmax"},
+                                 " * **Peak sum(x):** Sum all samples of the slice / range into a single peak\n"\
+                                 " * **Peak sum(x-min(x)):** Like above, with an offset applied for min to be zero\n"\
+                                 " * **Peak max(x)-min(x):** Difference of min and max as single peak\n",
+                                                'values':util.dictSort({"Copy":"copy", "Peak: sum(x)":"peak_sum", "Peak: sum(x-min(x))":"peak_sum_above_min",
+                                                          "Peak: max(x)-min(x)":"peak_minmax"}),
                                                 'default':"copy", 'value':"copy"
                                                },
 
-#            {'name':'Place method',             'key':'placer', 'type':'list', 'action':self.updateScript,
-#                         'help': "Place method:\n"\
-#                                 "-------------\n\n"
-#                                 "Specifies how to place input slices into output slots.\n"\
-#                                 "\n"\
-#                                 " * **Copy generously:** Copy from input until the slot is filled, possibly duplicating data.\n"\
-#                                 " * **Copy exactly:** Copy just the input slice (slice-width), remainders filled with 0.\n"\
-#                                 " * **Range extract:** Copy only part of the input slice, as specified below (from/to relative to ref slice)\n"\
-#                                 " * **Range sum:** Extract range from slice, add all values and output them as single peak (slot center)\n",
-#                                                'values':{"Copy generously":"copy_fill", "Copy truncated":"copy_trunc", "Range extract":"copy_range", "Range sum":"sum"},
-#                                                'default':"copy_trunc", 'value':"copy_trunc"
-#                                               },
-
-
             {'name':'  Slot width (0=auto)',   'key':'slot_width', 'type':'int', 'value':0, 'action':self.updateScript},
             {'name':'  Alignment',             'key':'slot_align', 'type':'list', 'action':self.updateScript,
-                                               'readonly':True,   # FIXME: disabled because not yet implemented
-                                               'values':{"Left":"left", "Center":"center", "Right":"right"},
+                                               'values':util.dictSort({"Left":"left", "Center":"center", "Right":"right"}),
                                                'default':"left", 'value':"left"
                                                },
 
@@ -396,14 +379,17 @@ class ResyncSliceToSlot(PreprocessingBase):
                     #--- calc peak height
 
                     if (self.output_method == 'peak_minmax'):
-                        peak  = np.nanmax(trace[slice_start:slice_stop]) - np.nanmin(trace[slice_start:slice_stop])
+                        peak = np.nanmax(trace[slice_start:slice_stop]) - np.nanmin(trace[slice_start:slice_stop])
 
                     else:
-                        peak  = np.nansum(trace[slice_start:slice_stop])
-                        peak /= max(slice_len, 1)
-
+                        base = 0
                         if (self.output_method == 'peak_sum_above_min'):
-                            peak -= np.nanmin(trace[slice_start:slice_stop])
+                            base = np.nanmin(trace[slice_start:slice_stop])
+
+                        peak = np.nansum(trace[slice_start:slice_stop] - base)
+
+                        # Normalize to size?  not good when TRUNCATE is involved and leaves great part at 0
+                        # peak /= max(slice_len, 1)
 
                     #--- create output slot
 
@@ -417,21 +403,33 @@ class ResyncSliceToSlot(PreprocessingBase):
 
                 else:
 
-                    #---
+                    #--- Copy truncated
 
-                    # FIXME: right now we just left-align and copy_trunc.  implement the rest!
+                    # FIXME: Implement a "generous" copy as well, padding with material from trace source instead of zeros
+
+                    pad = slot_len - slice_len
 
                     if self.slot_align == 'left':
-                        # left-align
                         if slice_len >= slot_len:
                             slot = trace[slice_start:(slice_start + slot_len)]
                         else:
-                            pad = slot_len - slice_len
-                            # print "PAD = %d" % pad
                             slot = np.append(trace[slice_start:slice_stop], np.zeros(pad))
 
+                    elif self.slot_align == 'right':
+                        if slice_len >= slot_len:
+                            slot = trace[(slice_stop-slot_len):slice_stop]
+                        else:
+                            slot = np.append(np.zeros(pad), trace[slice_start:slice_stop])
+
+                    elif self.slot_align == 'center':
+                        slice_center = slice_start + (slice_len/2)
+                        if slice_len >= slot_len:
+                            slot = trace[(slice_center-(slot_len/2)):(slice_center+((slot_len+1)/2))]
+                        else:
+                            slot = np.concatenate((np.zeros(pad/2), trace[slice_start:slice_stop], np.zeros((pad+1)/2)))
+
                     else:
-                        # FIXME: not yet implemented
+                        # should not get here
                         slot = np.zero(slot_len)
 
 
