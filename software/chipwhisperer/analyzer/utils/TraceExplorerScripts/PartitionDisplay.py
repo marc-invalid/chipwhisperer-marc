@@ -303,8 +303,10 @@ class PartitionDisplay(Parameterized, AutoScript):
         self.getParams().addChildren([
               {'name':'Comparison Mode', 'key':'diffmode', 'type':'list', 'values':diffModeList, 'value':self.diffObject.diffMethodClass, 'action':lambda _: self.updateScript()},
               {'name':'Partition Mode', 'key':'partmode', 'type':'list', 'values':util.dictSort(partModeList), 'value':self.partObject.partMethodClass, 'action':lambda _: self.updateScript()},
+              {'readonly':True, 'name':'Color Palette', 'key':'colorpalette', 'type':'list', 'values':util.dictSort({"Automatic":"auto", "Rainbow":"rainbow", "Accessible":"accessible", "Two colors":"dual"}), 'value':"auto", 'action':lambda _: self.updateScript()},
               {'name':'Trace Range (all: 0,-1)', 'key':'trace_range', 'type':'range', 'default':(0, -1), 'value':(0, -1), 'action':lambda _: self.updateScript()},
               {'name':'Display', 'type':'action', 'action':lambda _:self.runAction()},
+              {'name':'Keeloq', 'type':'action', 'action':lambda _:self.runAction_Keeloq()},
 
               {'name':'Auto-Save Data to Project', 'key':'part-saveints', 'type':'bool', 'value':False, 'action':lambda _: self.updateScript()},
               {'name':'Auto-Load Data from Project', 'key':'part-loadints', 'type':'bool', 'value':False, 'action':lambda _: self.updateScript()},
@@ -423,6 +425,24 @@ class PartitionDisplay(Parameterized, AutoScript):
         self.addFunction('displayPartitionStats', 'displayPartitions', 'differences={"partclass":%s, "diffs":partDiffs}' % partMethodStr, obj='ted')
         self.addFunction('displayPartitionStats', 'poi.setDifferences', 'partDiffs', obj='ted')
 
+        #---- ACTION: Keeloq
+
+        self.addGroup("displayKeeloqStats")
+        self.addVariable('displayKeeloqStats', 'ted', 'self.')
+        self.addFunction('displayKeeloqStats', 'initPartitionFromAttack', 'userscript=self', obj='ted')
+        self.addFunction('displayKeeloqStats', 'setTraceSource', 'UserScript.traces', obj='ted')
+        self.addFunction('displayKeeloqStats', 'parent.getProgressIndicator', '', 'progressBar', obj='ted')
+        self.addFunction('displayKeeloqStats', 'partObject.setPartMethod', partMethodStr, obj='ted')
+        self.addFunction('displayKeeloqStats', 'generatePartitionStats_KEELOQ',
+                            'partitionData={"partclass":%s} ,saveFile=False, progressBar=progressBar, tRange=%s' % (partMethodStr, traceRangeStr),
+                            'partStats', obj='ted')
+        self.addFunction('displayKeeloqStats', 'generatePartitionDiffs',
+                            '%s, statsInfo={"partclass":%s, "stats":partStats}, saveFile=False, loadFile=False, progressBar=progressBar'%
+                            (diffMethodStr, partMethodStr),
+                            'partDiffs', obj='ted')
+        self.addFunction('displayKeeloqStats', 'displayPartitions', 'differences={"partclass":%s, "diffs":partDiffs}' % partMethodStr, obj='ted')
+        self.addFunction('displayKeeloqStats', 'poi.setDifferences', 'partDiffs', obj='ted')
+
         #---- ACTION: Calc POI
 
         ##Points of Interest
@@ -448,6 +468,150 @@ class PartitionDisplay(Parameterized, AutoScript):
         attack = userscript.cwagui.attackScriptGen.getAttack()
         if (attack is not None) and hasattr(attack, "initPartitionFromAttack"):
             attack.initPartitionFromAttack(userscript)
+
+    #---
+
+    def generatePartitionStats_KEELOQ(self, partitionData={"partclass":None}, saveFile=False, loadFile=False,  tRange=(0, -1), progressBar=None):
+        print "REACHED #1"
+#        self.partObject.setPartMethod(partitionData["partclass"])
+        partClass = partitionData["partclass"]
+
+        rounds = 1
+        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_rounds'):
+            rounds = CWCoreAPI.getInstance().kludge_keeloq_rounds
+
+        round528   = 3030
+        roundwidth = 30
+
+        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_roundwidth'):
+            roundwidth = CWCoreAPI.getInstance().kludge_keeloq_roundwidth
+        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_round528'):
+            round528   = CWCoreAPI.getInstance().kludge_keeloq_round528
+
+        allStats = None
+
+        for round in range(0, max(rounds,1)):
+
+            #--- prepare:
+
+            depth      = round+1
+
+            roundStart = round528 - (round * roundwidth)
+            roundStop  = roundStart + roundwidth
+
+            factor     = 2**(rounds-depth)
+
+            #--- execute:
+
+            CWCoreAPI.getInstance().kludge_keeloq_rounds = depth
+
+            # MARC: TODO: Hey we could pass an argument transparently, something like partitionArgs={"depth":5, "keystream":"0100"}
+            #             That would solve most (all?) our kludgy problems both with GUI action as well as scripted action!
+            partData  = self.partObject.generatePartitions(saveFile=saveFile, loadFile=loadFile, tRange=tRange)
+
+            partStats = self.generatePartitionStats(partitionData={"partclass":partClass, "partdata":partData},
+                        saveFile=saveFile, loadFile=loadFile, tRange=tRange, progressBar=progressBar, pointRange=(roundStart, roundStop))
+
+            if factor > 1:
+                partStats = self.inflatePartitionStats(partStats, factor=factor)
+
+            #--- append to
+
+            if allStats == None:
+                print "append mode: USE round=%d depth=%d pos=(%d,%d) factor=%d" % (round, depth, roundStart, roundStop, factor)
+                allStats = partStats
+            else:
+                print "append mode: APPEND round=%d depth=%d pos=(%d,%d) factor=%d" % (round, depth, roundStart, roundStop, factor)
+                allStats = self.appendPartitionStats(partStats, allStats)
+
+            #break
+
+        # restore original value
+        CWCoreAPI.getInstance().kludge_keeloq_rounds = rounds
+
+        return allStats
+
+
+    #---
+
+    def appendPartitionStats(self, stats1=None, stats2=None):
+
+        numKeys       = len(stats1["mean"])
+        numPartitions = len(stats1["mean"][0])
+
+        for bnum in range(0, numKeys):
+            for i in range(0, numPartitions):
+
+                #stats1["mean"    ][bnum][i].append(stats2["mean"    ][bnum][i])
+                #stats1["variance"][bnum][i].append(stats2["variance"][bnum][i])
+                #stats1["number"  ][bnum][i].append(stats2["number"  ][bnum][i])
+
+                #--- convert "number" from scalar to array
+                #
+                #    The traditional partitioning always worked on whole traces, so "number" (sample number for t-test)
+                #    may be scalar.  In our "sliced" partitioning, the number of samples at one point may be different
+                #    than at another point.  Therefore we need to make sure that "number" is converted to an array of
+                #    corresponding length, and also that subsequent operations (such as t-test) don't choke on it.
+
+                len1 = len(stats1["mean"][bnum][i])
+                len2 = len(stats2["mean"][bnum][i])
+                num1 = stats1["number"][bnum][i]
+                num2 = stats2["number"][bnum][i]
+
+                if not isinstance(num1, (list, tuple, np.ndarray)):
+                    num1 = np.full_like(stats1["mean"][bnum][i], num1)
+                if not isinstance(num2, (list, tuple, np.ndarray)):
+                    num2 = np.full_like(stats2["mean"][bnum][i], num2)
+
+                #--- append the arrays
+
+                stats1["mean"    ][bnum][i] = np.append(stats1["mean"    ][bnum][i], stats2["mean"    ][bnum][i])
+                stats1["variance"][bnum][i] = np.append(stats1["variance"][bnum][i], stats2["variance"][bnum][i])
+                stats1["number"  ][bnum][i] = np.append(num1, num2)
+
+        return stats1
+
+    #---
+
+    def inflatePartitionStats(self, stats=None, factor=1, append=True):
+
+        inKeys = len(stats["mean"])
+
+        A_k  = []
+        Q_k  = []
+        ACnt = []
+
+        if append == True:
+
+            # repeat blocks of all elements
+
+            outKey = 0
+            for clone in range(0, factor):
+                for inKey in range(0, inKeys):
+                    A_k.append([])
+                    Q_k.append([])
+                    ACnt.append([])
+                    for i in range(0, len(stats["mean"][inKey])):
+                        A_k[outKey].append(stats["mean"][inKey][i])
+                        Q_k[outKey].append(stats["variance"][inKey][i])
+                        ACnt[outKey].append(stats["number"][inKey][i])
+                    outKey += 1
+
+        else:
+
+            # repeat each element individually
+
+# FIXME: broken, the outkey index is missing!  See above for how it has to be done
+            print "FIXME: Using broken path in inflatePartitionStats()"
+            outKey = 0
+            for inKey in range(0, inKeys):
+                for clone in range(0, factor):
+                    A_k.append(stats["mean"][inKey])
+                    Q_k.append(stats["variance"][inKey])
+                    ACnt.append(stats["number"][inKey])
+                    outKey += 1
+
+        return {"mean":A_k, "variance":Q_k, "number":ACnt}
 
     #---
 
@@ -704,6 +868,9 @@ class PartitionDisplay(Parameterized, AutoScript):
 
     def runAction(self):
         self.runScriptFunction.emit('TraceExplorerDialog_PartitionDisplay_displayPartitionStats')
+
+    def runAction_Keeloq(self):
+        self.runScriptFunction.emit('TraceExplorerDialog_PartitionDisplay_displayKeeloqStats')
 
     def setTraceSource(self, traces):
         self._traces = traces

@@ -34,10 +34,6 @@ from chipwhisperer.analyzer.attacks.models.AES128_8bit import getHW
 from chipwhisperer.analyzer.attacks.models.AES128_8bit import INVSHIFT
 from chipwhisperer.analyzer.models.aes.key_schedule import keyScheduleRounds
 from chipwhisperer.analyzer.models.aes.funcs import sbox, inv_sbox
-from chipwhisperer.analyzer.models.keeloq import keeloqEncryptKeybit
-from chipwhisperer.analyzer.models.keeloq import keeloqEncryptKeybitHD
-from chipwhisperer.analyzer.models.keeloq import keeloqDecryptKeybit
-from chipwhisperer.analyzer.models.keeloq import keeloqDecryptKeybitHD
 from chipwhisperer.common.utils.parameter import Parameterized
 
 
