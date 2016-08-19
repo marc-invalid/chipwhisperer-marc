@@ -37,6 +37,28 @@ except ImportError:
     DictType = dict
 
 
+#--- Convert dict into an alpha-sorted one (useful for ListParameter values etc)
+
+def dictSort(dictIn):
+    try:
+        # OrderedDict is new in 2.7
+        from collections import OrderedDict
+        dictOut = OrderedDict()
+
+        # Example for forcing certain items to front (rather than alphabetical)
+        if 'None' in dictIn:
+            dictOut['None'] = dictIn['None']
+            del dictIn['None']
+
+        # Simple sort.  TODO: add options like toupper, numerical, sort-by-value, etc
+        dictOut.update(sorted(dictIn.items(), key=lambda t: t[0]))
+        return dictOut
+
+    except ImportError:
+        pass
+    return dictIn
+
+
 def getRootDir():
     path = os.path.join(os.path.dirname(__file__), "../../../")
     return os.path.normpath(path)

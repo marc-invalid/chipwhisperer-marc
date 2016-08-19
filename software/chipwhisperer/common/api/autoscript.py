@@ -153,7 +153,12 @@ class AutoScript(object):
     def importsAppend(self, statement):
         if statement not in self.importStatements:
             self.importStatements.append(statement)
-        self.updateDelayTimer.start()
+            self.updateDelayTimer.start()
+
+    def importsRemove(self, statement):
+        if statement in self.importStatements:
+            self.importStatements.remove(statement)
+            self.updateDelayTimer.start()
 
     def getImportStatements(self):
         return self.importStatements

@@ -275,9 +275,20 @@ class PartitionDisplay(Parameterized, AutoScript):
 
     def defineName(self):
         self.partObject = Partition()
+
+        #--- Collect supported partition modes
+        #
+        #    * (DEPRECATED) The ones listed in "supportedMethods", using their .sectionName / .partitionType
+        #    * Those in the "partition/" folder (via CoreAPI.valid_partitionModules) using ._name / ._description
+
         partModeList = {}
+
         for a in self.partObject.supportedMethods:
             partModeList[a.partitionType] = a
+
+        partModeList.update(CWCoreAPI.getInstance().valid_partitionModules)
+
+        #---
 
         self.diffObject = DifferenceMode()
         diffModeList = {}
@@ -291,7 +302,8 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         self.getParams().addChildren([
               {'name':'Comparison Mode', 'key':'diffmode', 'type':'list', 'values':diffModeList, 'value':self.diffObject.diffMethodClass, 'action':lambda _: self.updateScript()},
-              {'name':'Partition Mode', 'key':'partmode', 'type':'list', 'values':partModeList, 'value':self.partObject.partMethodClass, 'action':lambda _: self.updateScript()},
+              {'name':'Partition Mode', 'key':'partmode', 'type':'list', 'values':util.dictSort(partModeList), 'value':self.partObject.partMethodClass, 'action':lambda _: self.updateScript()},
+              {'name':'Trace Range (all: 0,-1)', 'key':'trace_range', 'type':'range', 'default':(0, -1), 'value':(0, -1), 'action':lambda _: self.updateScript()},
               {'name':'Display', 'type':'action', 'action':lambda _:self.runAction()},
 
               {'name':'Auto-Save Data to Project', 'key':'part-saveints', 'type':'bool', 'value':False, 'action':lambda _: self.updateScript()},
@@ -340,6 +352,15 @@ class PartitionDisplay(Parameterized, AutoScript):
         self.doRedraw = True
         self.redrawPlot()
 
+    def setByteToggle(self):
+        self.doRedraw = False
+        for i, t in enumerate(self.byteNumAct):
+            status = not t.defaultWidget().isChecked()
+            t.defaultWidget().setChecked(status)
+            self.setBytePlot(i, status)
+        self.doRedraw = True
+        self.redrawPlot()
+
     def redrawPlot(self):
         self.graph.clearPushed()
 
@@ -352,14 +373,35 @@ class PartitionDisplay(Parameterized, AutoScript):
         ##Partitioning & Differences
         try:
             diffMethodStr = self.findParam('diffmode').getValue().__name__
-            partMethodStr = self.findParam('partmode').getValue().__name__
+            partMethod    = self.findParam('partmode').getValue()
+            partMethodStr = partMethod.__name__
         except AttributeError as e:
             return
 
-        self.importsAppend('from chipwhisperer.analyzer.utils.Partition import PartitionRandDebug, PartitionRandvsFixed, PartitionEncKey, PartitionHWIntermediate, PartitionHDLastRound')
-        self.importsAppend('from chipwhisperer.analyzer.utils.Partition import PartitionTextOut_Bits_32BE')
-        self.importsAppend('from chipwhisperer.analyzer.utils.TraceExplorerScripts.PartitionDisplay import DifferenceModeTTest, DifferenceModeSAD')
+        traceRange = self.findParam("trace_range").getValue()
+        traceStart = max(traceRange[0], 0)
+        traceStop  = traceRange[1]
+        if traceStop != -1:
+            traceStop = max(traceStop, traceStart)
+        traceRangeStr = "(%d,%d)" % (traceStart, traceStop)
+
+        #--- Imports (general)
+
         self.importsAppend('from chipwhisperer.analyzer.ui.CWAnalyzerGUI import CWAnalyzerGUI')
+        self.importsAppend('from chipwhisperer.analyzer.utils.TraceExplorerScripts.PartitionDisplay import DifferenceModeTTest, DifferenceModeSAD')
+
+        #--- Imports (the one currently active partition module)
+        #
+        # FIXME: This maintains our import list always up-to-date (purging stale imports).
+        #        However, someone appends a COPY of it into AttackScriptGen.utilList,
+        #        effectively deafeating the intent.
+
+        if hasattr(self, "partition_import") and self.partition_import is not None:
+            self.importsRemove(self.partition_import)
+        self.partition_import = "from %s import %s" % (partMethod.__module__, partMethod.__name__)
+        self.importsAppend(self.partition_import)
+
+        #---- ACTION: Display
 
         self.addGroup("displayPartitionStats")
         self.addVariable('displayPartitionStats', 'ted', 'self.')
@@ -367,16 +409,21 @@ class PartitionDisplay(Parameterized, AutoScript):
         self.addFunction('displayPartitionStats', 'setTraceSource', 'UserScript.traces', obj='ted')
         self.addFunction('displayPartitionStats', 'parent.getProgressIndicator', '', 'progressBar', obj='ted')
         self.addFunction('displayPartitionStats', 'partObject.setPartMethod', partMethodStr, obj='ted')
-        self.addFunction('displayPartitionStats', 'partObject.generatePartitions', 'saveFile=True, loadFile=False', 'partData', obj='ted')
+        self.addFunction('displayPartitionStats', 'partObject.generatePartitions',
+                            'saveFile=False, loadFile=False, tRange=%s' % traceRangeStr,
+                            'partData', obj='ted')
         self.addFunction('displayPartitionStats', 'generatePartitionStats',
-                            'partitionData={"partclass":%s, "partdata":partData}, saveFile=True, progressBar=progressBar' % partMethodStr,
+                            'partitionData={"partclass":%s, "partdata":partData}, saveFile=False, progressBar=progressBar, tRange=%s' %
+                            (partMethodStr, traceRangeStr),
                             'partStats', obj='ted')
         self.addFunction('displayPartitionStats', 'generatePartitionDiffs',
-                            '%s, statsInfo={"partclass":%s, "stats":partStats}, saveFile=True, loadFile=False, progressBar=progressBar'%
+                            '%s, statsInfo={"partclass":%s, "stats":partStats}, saveFile=False, loadFile=False, progressBar=progressBar'%
                             (diffMethodStr, partMethodStr),
                             'partDiffs', obj='ted')
         self.addFunction('displayPartitionStats', 'displayPartitions', 'differences={"partclass":%s, "diffs":partDiffs}' % partMethodStr, obj='ted')
         self.addFunction('displayPartitionStats', 'poi.setDifferences', 'partDiffs', obj='ted')
+
+        #---- ACTION: Calc POI
 
         ##Points of Interest
         ptrng = self.findParam(["Points of Interest",'poi-pointrng']).getValue()
@@ -400,11 +447,11 @@ class PartitionDisplay(Parameterized, AutoScript):
     def initPartitionFromAttack(self, userscript=None):
         attack = userscript.cwagui.attackScriptGen.getAttack()
         if (attack is not None) and hasattr(attack, "initPartitionFromAttack"):
-            print "Attack found and calling now!"
             attack.initPartitionFromAttack(userscript)
 
+    #---
 
-    def generatePartitionStats(self, partitionData={"partclass":None, "partdata":None}, saveFile=False, loadFile=False,  tRange=(0, -1), progressBar=None):
+    def generatePartitionStats(self, partitionData={"partclass":None, "partdata":None}, saveFile=False, loadFile=False,  tRange=(0, -1), progressBar=None, pointRange=(0,-1)):
 
         traces = self._traces
 
@@ -413,9 +460,16 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         self.partObject.setPartMethod(partitionData["partclass"])
 
-        self.numKeys = len(self.partObject.partMethod.getPartitionNum(traces, 0))
+        if partitionData["partdata"] is not None:
+            self.numKeys = len(partitionData["partdata"])
+        else:
+            self.numKeys = len(self.partObject.partMethod.getPartitionNum(traces, 0))
 
-        numPoints = traces.numPoints()
+        pointStart = max(pointRange[0], 0)
+        pointStop  = pointRange[1] if (pointRange[1] >= 0) else traces.numPoints() + 1 + pointRange[1]
+        pointStart = min(pointStart, pointStop)
+        numPoints  = pointStop - pointStart
+
 
         if loadFile:
             cfgsecs = self.api.project().getDataConfig(sectionName="Trace Statistics", subsectionName="Total Trace Statistics")
@@ -484,10 +538,11 @@ class PartitionDisplay(Parameterized, AutoScript):
                     tlist = partData[bnum][i]
                     if len(tlist) > 0:
                         for tnum in tlist:
-                            if tnum > tRange[0] and tnum < tRange[1]:
-                                t = traces.getTrace(tnum)
+                            # MARC bugfix: trace==0 was never used
+                            if tnum >= tRange[0] and tnum < tRange[1]:
+                                t = traces.getTrace(tnum)[pointStart:pointStop]
                                 ACnt[bnum][i] += 1
-                                A_k[bnum][i] = A_k[bnum][i] + (t - A_j[bnum][i]) / ACnt[bnum][i]
+                                A_k[bnum][i] = A_k[bnum][i] + ((t - A_j[bnum][i]) / ACnt[bnum][i])
                                 Q_k[bnum][i] = Q_k[bnum][i] + ((t - A_j[bnum][i]) * (t - A_k[bnum][i]))
                                 A_j[bnum][i] = A_k[bnum][i]
 
@@ -501,6 +556,13 @@ class PartitionDisplay(Parameterized, AutoScript):
                         # TODO: Should be using population variance or sample variance (e.g. /n or /n-1)?
                         #      Since this is taken over very large sample sizes I imagine it won't matter
                         #      ultimately.
+                        # MARC: (from Wiki) The t-distribution with n − 1 degrees of freedom is the sampling
+                        #       distribution of the t-value when the samples consist of independent
+                        #       identically distributed observations from a normally distributed population.
+                        #       Thus for inference purposes t is a useful "pivotal quantity" in the case
+                        #       when the mean and variance are unknown population parameters, in the sense
+                        #       that the t-value has then a probability distribution that depends on neither
+                        #       mean nor variance.
                         Q_k[bnum][i] = Q_k[bnum][i] / max(ACnt[bnum][i] - 1, 1)
 
             # Average is in A_k
@@ -532,9 +594,10 @@ class PartitionDisplay(Parameterized, AutoScript):
         self.partObject.setPartMethod(statsInfo["partclass"])
         self.diffObject.setDiffMethod(diffModule)
 
-        self.numKeys = len(self.partObject.partMethod.getPartitionNum(traces, 0))
+        # MARC: extract number of traces / points from input data (rather than global config)
+        self.numKeys = len(statsInfo["stats"]["mean"])
 
-        numPoints = traces.numPoints()
+        numPoints = len(statsInfo["stats"]["mean"][0][0])
 
         foundsecs = []
         if loadFile:
@@ -587,6 +650,7 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         self.partObject.setPartMethod(differences["partclass"])
         self.numKeys = len(self.partObject.partMethod.getPartitionNum(traces, 0))
+        # MARC: should get numKeys from input data! something like self.numKeys = len(differences["diffs"][0])
         self.SADList = differences["diffs"]
 
         # Place byte selection option on graph
@@ -619,14 +683,17 @@ class PartitionDisplay(Parameterized, AutoScript):
         byteNumOdd  = QAction('Odd', self.graph)
         byteNumEven.triggered.connect(partial(self.setByteShowEvenOdd, True))
         byteNumOdd.triggered.connect(partial(self.setByteShowEvenOdd, False))
+        byteNumToggle = QAction('Inv', self.graph)
+        byteNumToggle.triggered.connect(partial(self.setByteToggle))
 
         self.bselection.clear()
-        for i in range(0, self.numKeys):
-            self.bselection.addAction(self.byteNumAct[i])
         self.bselection.addAction(byteNumAllOn)
         self.bselection.addAction(byteNumAllOff)
         self.bselection.addAction(byteNumEven)
         self.bselection.addAction(byteNumOdd)
+        self.bselection.addAction(byteNumToggle)
+        for i in range(0, self.numKeys):
+            self.bselection.addAction(self.byteNumAct[i])
         self.graph.setPersistance(True)
 
         self.poi.setDifferences(self.SADList)

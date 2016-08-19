@@ -40,7 +40,7 @@ from chipwhisperer.common.utils.parameter import Parameterized
 class PartitionHDLastRound(object):
 
     sectionName = "Partition Based on HD of Last Round"
-    partitionType = "HD AES Last-Round"
+    partitionType = "AES: HD Last-Round"
 
     def getNumPartitions(self):
         return 9
@@ -68,7 +68,7 @@ class PartitionHDLastRound(object):
 class PartitionHWIntermediate(object):
 
     sectionName = "Partition Based on HW of Intermediate"
-    partitionType = "HW AES Intermediate"
+    partitionType = "AES: HW Intermediate"
 
     def getNumPartitions(self):
         return 9
@@ -95,30 +95,6 @@ class PartitionEncKey(object):
     def getPartitionNum(self, trace, tnum):
         key = trace.getKnownKey(tnum)
         return key
-
-
-class PartitionTextOut_Bits_32BE(object):
-
-    sectionName = "Partition Based on TextOut 32 bit values big-endian"
-    partitionType = "TextOut 32 bits big-endian"
-
-    def getNumPartitions(self):
-        return 2
-
-    def getPartitionNum(self, trace, tnum):
-        textout = trace.getTextout(tnum)
-
-        if (textout is not None) and (len(textout) >= 4):
-            # assume big-endian byte order
-            ciphertext = (textout[0] << 24) | (textout[1] << 16) | (textout[2] << 8) | (textout[3] << 0)
-        else:
-            ciphertext = 0
-
-        # assume big-endian bit order
-        guess = [0] * 32
-        for i in range(0, 32):
-            guess[i] = (ciphertext >> i) % 2
-        return guess
 
 
 class PartitionRandvsFixed(object):
@@ -166,7 +142,8 @@ class Partition(Parameterized):
                 }
 
     supportedMethods = [PartitionRandvsFixed, PartitionEncKey, PartitionRandDebug, PartitionHWIntermediate, PartitionHDLastRound]
-    supportedMethods.append(PartitionTextOut_Bits_32BE)
+    # MARC: Use of this list is deprecated.  It will be replaced by CWCoreAPI.getInstance().valid_partitionModules
+    #       Currently both are complementary.
 
     def __init__(self):
         self.setPartMethod(PartitionRandvsFixed)
@@ -175,7 +152,7 @@ class Partition(Parameterized):
     def setPartMethod(self, method):
         self.partMethodClass = method
         self.partMethod = method()
-        self.attrDictPartition["sectionName"] = self.partMethod.sectionName
+        self.attrDictPartition["sectionName"] = self.partMethod.sectionName if hasattr(self.partMethod, "sectionName") else self.partMethod._name
         self.attrDictPartition["moduleName"] = self.partMethod.__class__.__name__
 
     def init(self):

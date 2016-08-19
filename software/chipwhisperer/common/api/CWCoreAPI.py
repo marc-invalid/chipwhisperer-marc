@@ -72,6 +72,7 @@ class CWCoreAPI(Parameterized):
         self.valid_acqPatterns =  pluginmanager.getPluginsInDictFromPackage("chipwhisperer.capture.acq_patterns", True, False)
         self.valid_attacks = pluginmanager.getPluginsInDictFromPackage("chipwhisperer.analyzer.attacks", True, False)
         self.valid_preprocessingModules = pluginmanager.getPluginsInDictFromPackage("chipwhisperer.analyzer.preprocessing", False, True)
+        self.valid_partitionModules = pluginmanager.getPluginsInDictFromPackage("chipwhisperer.analyzer.partition", False, False)
 
         self.settings = Settings()
 
