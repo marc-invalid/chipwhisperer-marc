@@ -210,13 +210,16 @@ class Partition(Parameterized):
     def getPartitionData(self):
         return self.partDataCache
 
-    def generatePartitions(self, partitionClass=None, saveFile=False, loadFile=False, tRange=(0, -1)):
+    def generatePartitions(self, partitionClass=None, saveFile=False, loadFile=False, tRange=(0, -1), partitionConfig=None):
         """
         Generate partitions, using previously setup setTraceManager & partition class, or if they are passed as
         arguments will update the class data
         """
         if partitionClass:
             self.setPartMethod(partitionClass)
+
+        if (partitionConfig is not None) and hasattr(self.partMethod, "setConfig"):
+            self.partMethod.setConfig(partitionConfig)
 
         partitionTable = None
 

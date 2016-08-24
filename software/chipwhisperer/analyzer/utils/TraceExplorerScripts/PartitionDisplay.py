@@ -407,10 +407,10 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         self.addGroup("displayPartitionStats")
         self.addVariable('displayPartitionStats', 'ted', 'self.')
-        self.addFunction('displayPartitionStats', 'initPartitionFromAttack', 'userscript=self', obj='ted')
         self.addFunction('displayPartitionStats', 'setTraceSource', 'UserScript.traces', obj='ted')
         self.addFunction('displayPartitionStats', 'parent.getProgressIndicator', '', 'progressBar', obj='ted')
         self.addFunction('displayPartitionStats', 'partObject.setPartMethod', partMethodStr, obj='ted')
+        self.addFunction('displayPartitionStats', 'initPartitionFromAttack', 'userscript=self, partObject=ted.partObject', obj='ted')
         self.addFunction('displayPartitionStats', 'partObject.generatePartitions',
                             'saveFile=False, loadFile=False, tRange=%s' % traceRangeStr,
                             'partData', obj='ted')
@@ -429,10 +429,10 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         self.addGroup("displayKeeloqStats")
         self.addVariable('displayKeeloqStats', 'ted', 'self.')
-        self.addFunction('displayKeeloqStats', 'initPartitionFromAttack', 'userscript=self', obj='ted')
         self.addFunction('displayKeeloqStats', 'setTraceSource', 'UserScript.traces', obj='ted')
         self.addFunction('displayKeeloqStats', 'parent.getProgressIndicator', '', 'progressBar', obj='ted')
         self.addFunction('displayKeeloqStats', 'partObject.setPartMethod', partMethodStr, obj='ted')
+        self.addFunction('displayKeeloqStats', 'initPartitionFromAttack', 'userscript=self, partObject=ted.partObject', obj='ted')
         self.addFunction('displayKeeloqStats', 'generatePartitionStats_KEELOQ',
                             'partitionData={"partclass":%s} ,saveFile=False, progressBar=progressBar, tRange=%s' % (partMethodStr, traceRangeStr),
                             'partStats', obj='ted')
@@ -460,14 +460,20 @@ class PartitionDisplay(Parameterized, AutoScript):
             self._autoscript_init = True
 
 
-    # Permit an ATTACK module to pass GUI config values down to the PARTITION module,
-    # for example using global vars in the CoreAPI.
-    # TODO: A better way of passing values would be to encode them into the userscript
-    #       (requiring solution of a few issues first).
-    def initPartitionFromAttack(self, userscript=None):
+    #--- Allow ATTACK module to pass GUI config down to PARTITION method
+    #
+    #    Useful to interact with a partition method and test ideas manually.
+    #
+    #    This is a trampoline function.  We mean to call the attack, but it's difficult to test
+    #    for presence of the necessary API inside of auto-generated scripts, so we do it here.
+    #
+    #    TODO: The partition method API could be enhanced by letting it add parameters right
+    #          into the TraceExplorer dock.
+
+    def initPartitionFromAttack(self, userscript=None, partObject=None):
         attack = userscript.cwagui.attackScriptGen.getAttack()
         if (attack is not None) and hasattr(attack, "initPartitionFromAttack"):
-            attack.initPartitionFromAttack(userscript)
+            attack.initPartitionFromAttack(userscript, partObject)
 
     #---
 
@@ -748,6 +754,8 @@ class PartitionDisplay(Parameterized, AutoScript):
         progressBar.hide()
         return stats
 
+    #---
+
     def generatePartitionDiffs(self, diffModule, statsInfo={"partclass":None, "stats":None}, saveFile=False, loadFile=False, tRange=(0, -1), progressBar=None):
 
         traces = self._traces
@@ -804,6 +812,8 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         self.SADList = SADList
         return SADList
+
+    #---
 
     def displayPartitions(self, differences={"partclass":None, "diffs":None}, tRange=(0, -1)):
         self.graphDock.show()
