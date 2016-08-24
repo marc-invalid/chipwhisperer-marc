@@ -177,11 +177,21 @@ class ResyncSliceToSlot(PreprocessingBase):
                                  "Specifies which parts of detected slices may be placed into the output slot.\n"\
                                  "\n"\
                                  " * **Copy:** Copy sample values\n"\
+                                 "\n"\
+                                 " * **Peak max(x):** Copy just the max value as single peak\n"\
+                                 " * **Peak max(x)-mean(x):** Difference of mean and max as single peak\n"\
+                                 " * **Peak max(x)-min(x):** Difference of min and max as single peak\n"\
+                                 "\n"\
                                  " * **Peak sum(x):** Sum all samples of the slice / range into a single peak\n"\
-                                 " * **Peak sum(x-min(x)):** Like above, with an offset applied for min to be zero\n"\
-                                 " * **Peak max(x)-min(x):** Difference of min and max as single peak\n",
-                                                'values':util.dictSort({"Copy":"copy", "Peak: sum(x)":"peak_sum", "Peak: sum(x-min(x))":"peak_sum_above_min",
-                                                          "Peak: max(x)-min(x)":"peak_minmax"}),
+                                 " * **Peak sum(x-mean(x)):** Like above, with an offset applied for mean to be zero (DC removed)\n"\
+                                 " * **Peak sum(x-min(x)):** Like above, with an offset applied for min to be zero\n",
+                                                'values':util.dictSort({"Copy":"copy",
+                                                          "Peak: max(x)":"peak_max",
+                                                          "Peak: max(x)-mean(x)":"peak_meanmax",
+                                                          "Peak: max(x)-min(x)":"peak_minmax",
+                                                          "Peak: sum(x)":"peak_sum",
+                                                          "Peak: sum(x-mean(x))":"peak_sum_mean",
+                                                          "Peak: sum(x-min(x))":"peak_sum_above_min"}),
                                                 'default':"copy", 'value':"copy"
                                                },
 
@@ -378,12 +388,18 @@ class ResyncSliceToSlot(PreprocessingBase):
 
                     #--- calc peak height
 
-                    if (self.output_method == 'peak_minmax'):
+                    if (self.output_method == 'peak_max'):
+                        peak = np.nanmax(trace[slice_start:slice_stop])
+                    elif (self.output_method == 'peak_meanmax'):
+                        peak = np.nanmax(trace[slice_start:slice_stop]) - np.nanmean(trace[slice_start:slice_stop])
+                    elif (self.output_method == 'peak_minmax'):
                         peak = np.nanmax(trace[slice_start:slice_stop]) - np.nanmin(trace[slice_start:slice_stop])
 
                     else:
                         base = 0
-                        if (self.output_method == 'peak_sum_above_min'):
+                        if (self.output_method == 'peak_sum_mean'):
+                            base = np.nanmean(trace[slice_start:slice_stop])
+                        elif (self.output_method == 'peak_sum_above_min'):
                             base = np.nanmin(trace[slice_start:slice_stop])
 
                         peak = np.nansum(trace[slice_start:slice_stop] - base)
