@@ -254,16 +254,31 @@ class PartitionDisplay(Parameterized, AutoScript):
     _name = "Partition Comparison"
 
     def __init__(self, parent):
+
+        #--- mandatory init
+
         AutoScript.__init__(self)
         self._autoscript_init = False
         self.parent = parent
+        self._traces = None
+
+        self.api = CWCoreAPI.getInstance()
+
+        self.partObject = Partition()
+        self.diffObject = DifferenceMode()
+
+        #--- Skip GUI init unless a parent has been given (avoids adding docks multiple times)
+
+        if parent is None:
+            return
+
+        #--- GUI init
+
         self.poi = POI(self)
         self.poiDock = CWMainGUI.getInstance().addDock(self.poi, "Partition Comparison POI Table", area=Qt.TopDockWidgetArea)
         self.poiDock.hide()
         self.defineName()
-        self._traces = None
 
-        self.api = CWCoreAPI.getInstance()
         self.graph = GraphWidget()
         self.bselection = QToolBar()
         self.graph.addWidget(self.bselection)
@@ -274,7 +289,6 @@ class PartitionDisplay(Parameterized, AutoScript):
 
 
     def defineName(self):
-        self.partObject = Partition()
 
         #--- Collect supported partition modes
         #
@@ -290,7 +304,6 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         #---
 
-        self.diffObject = DifferenceMode()
         diffModeList = {}
         for a in self.diffObject.supportedMethods:
             diffModeList[a.differenceType] = a
@@ -629,6 +642,7 @@ class PartitionDisplay(Parameterized, AutoScript):
             tRange = (tRange[0], traces.numTraces() + 1 + tRange[1])
 
         self.partObject.setPartMethod(partitionData["partclass"])
+        numPartitions = self.partObject.partMethod.getNumPartitions()
 
         if partitionData["partdata"] is not None:
             self.numKeys = len(partitionData["partdata"])
@@ -639,7 +653,6 @@ class PartitionDisplay(Parameterized, AutoScript):
         pointStop  = pointRange[1] if (pointRange[1] >= 0) else traces.numPoints() + 1 + pointRange[1]
         pointStart = min(pointStart, pointStop)
         numPoints  = pointStop - pointStart
-
 
         if loadFile:
             cfgsecs = self.api.project().getDataConfig(sectionName="Trace Statistics", subsectionName="Total Trace Statistics")
@@ -670,7 +683,7 @@ class PartitionDisplay(Parameterized, AutoScript):
                 for d in dataArrays:
                     d.append([])
                 ACnt.append([])
-                for i in range(0, self.partObject.partMethod.getNumPartitions()):
+                for i in range(0, numPartitions):
                     for d in dataArrays:
                         d[bnum].append(np.zeros(numPoints))
                     ACnt[bnum].append(0)
@@ -700,10 +713,11 @@ class PartitionDisplay(Parameterized, AutoScript):
             # Q[0] = 0
             # Q[k] = Q[k-1] + (x[k] - A[k-1])(x[k] - A[k])
             for bnum in range(0, self.numKeys):
-                progressBar.updateStatus(tsegn * self.numKeys + bnum)
-                if progressBar.wasAborted():
-                    break
-                for i in range(0, self.partObject.partMethod.getNumPartitions()):
+                if progressBar:
+                    progressBar.updateStatus(tsegn * self.numKeys + bnum)
+                    if progressBar.wasAborted():
+                        break
+                for i in range(0, numPartitions):
                     util.updateUI()
                     tlist = partData[bnum][i]
                     if len(tlist) > 0:
@@ -716,13 +730,13 @@ class PartitionDisplay(Parameterized, AutoScript):
                                 Q_k[bnum][i] = Q_k[bnum][i] + ((t - A_j[bnum][i]) * (t - A_k[bnum][i]))
                                 A_j[bnum][i] = A_k[bnum][i]
 
-            if progressBar.wasAborted():
+            if progressBar and progressBar.wasAborted():
                 progressBar.hide()
                 return
 
             # Finally get variance
             for bnum in range(0, self.numKeys):
-                    for i in range(0, self.partObject.partMethod.getNumPartitions()):
+                    for i in range(0, numPartitions):
                         # TODO: Should be using population variance or sample variance (e.g. /n or /n-1)?
                         #      Since this is taken over very large sample sizes I imagine it won't matter
                         #      ultimately.
@@ -740,7 +754,7 @@ class PartitionDisplay(Parameterized, AutoScript):
 
             # Wasn't cancelled - save this to project file for future use if requested
             if saveFile:
-                progressBar.setText("Saving Mean/Variance Partitions")
+                if progressBar: progressBar.setText("Saving Mean/Variance Partitions")
                 cfgsec = self.api.project().addDataConfig(sectionName="Trace Statistics", subsectionName="Total Trace Statistics")
                 cfgsec["tracestart"] = tRange[0]
                 cfgsec["traceend"] = tRange[1]
@@ -751,7 +765,7 @@ class PartitionDisplay(Parameterized, AutoScript):
                 np.savez(fname["abs"], mean=A_k, variance=Q_k, number=ACnt)
                 cfgsec["filename"] = fname["rel"]
 
-        progressBar.hide()
+        if progressBar: progressBar.hide()
         return stats
 
     #---
@@ -791,8 +805,9 @@ class PartitionDisplay(Parameterized, AutoScript):
             fname = self.api.project().convertDataFilepathAbs(foundsecs[0]["filename"])
             SADList = np.load(fname)
         else:
-            progressBar.setWindowTitle("Phase 2: Calculating Partition Differences")
-            progressBar.setText("Calculating all Differences based on " + self.diffObject.mode.differenceType)
+            if progressBar:
+                progressBar.setWindowTitle("Phase 2: Calculating Partition Differences")
+                progressBar.setText("Calculating all Differences based on " + self.diffObject.mode.differenceType)
             SADList = self.diffObject.difference(self.numKeys, self.partObject.partMethod.getNumPartitions(), None, numPoints, statsInfo["stats"], progressBar)
 
             if saveFile:
@@ -805,10 +820,11 @@ class PartitionDisplay(Parameterized, AutoScript):
                 np.save(fname["abs"], SADList)
                 cfgsec["filename"] = fname["rel"]
 
-        progressBar.updateStatus(progressBar.maximum)
-        progressBar.setWindowTitle('Debug Fail')
-        if progressBar.wasAborted():
-            return
+        if progressBar:
+            progressBar.updateStatus(progressBar.maximum)
+            progressBar.setWindowTitle('Debug Fail')
+            if progressBar.wasAborted():
+                return
 
         self.SADList = SADList
         return SADList
