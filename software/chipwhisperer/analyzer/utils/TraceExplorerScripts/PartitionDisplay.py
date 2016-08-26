@@ -325,7 +325,7 @@ class PartitionDisplay(Parameterized, AutoScript):
         self.getParams().addChildren([
               {'name':'Comparison Mode', 'key':'diffmode', 'type':'list', 'values':diffModeList, 'value':self.diffObject.diffMethodClass, 'action':lambda _: self.updateScript()},
               {'name':'Partition Mode', 'key':'partmode', 'type':'list', 'values':util.dictSort(partModeList), 'value':self.partObject.partMethodClass, 'action':lambda _: self.updateScript()},
-              {'readonly':True, 'name':'Color Palette', 'key':'colorpalette', 'type':'list', 'values':util.dictSort({"Automatic":"auto", "Rainbow":"rainbow", "Accessible":"accessible", "Two colors":"dual"}), 'value':"auto", 'action':lambda _: self.updateScript()},
+              {'name':'Color Palette', 'key':'colorpalette', 'type':'list', 'values':util.dictSort({"Automatic":"auto", "Rainbow":"rainbow", "Accessible":"accessible", "Two colors":"dual", "Monochrome":"mono"}), 'value':"auto"},
               {'name':'Trace Range (all: 0,-1)', 'key':'trace_range', 'type':'range', 'default':(0, -1), 'value':(0, -1), 'action':lambda _: self.updateScript()},
               {'name':'Display', 'type':'action', 'action':lambda _:self.runAction()},
               {'name':'Keeloq', 'type':'action', 'action':lambda _:self.runAction_Keeloq()},
@@ -388,10 +388,12 @@ class PartitionDisplay(Parameterized, AutoScript):
     def redrawPlot(self):
         self.graph.clearPushed()
 
+        palette_preference = self.findParam('colorpalette').getValue()
+
         for bnum in range(0, self.numKeys):
             if self.enabledbytes[bnum]:
-                self.graph.setColorInt(bnum, self.numKeys)
-                self.graph.passTrace(self.SADList[bnum], pen=pg.mkPen(self.palette.intColor(bnum, self.numKeys)), idString = str(bnum))
+                self.graph.setColorInt(bnum, self.numKeys, palette=palette_preference)
+                self.graph.passTrace(self.SADList[bnum], pen=pg.mkPen(self.palette.intColor(bnum, self.numKeys, palette=palette_preference)), idString = str(bnum))
 
     def updateScript(self, ignored=None):
         ##Partitioning & Differences
@@ -860,11 +862,13 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         self.doRedraw = True
 
+        palette_preference = self.findParam('colorpalette').getValue()
+
         self.byteNumAct = []
         for i in range(0, self.numKeys):
             ql = QToolButton()
             ql.setText('%d' % i)
-            color = self.palette.intColor(i, self.numKeys)
+            color = self.palette.intColor(i, self.numKeys, palette=palette_preference)
             ql.setStyleSheet("color: rgb(%d, %d, %d)" % (color.red(), color.green(), color.blue()))
             qa = QWidgetAction(self.graph)
             qa.setDefaultWidget(ql)

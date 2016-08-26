@@ -73,6 +73,12 @@ class ColorPalette():
         self.ColorPalette2[14] = [ 25, 25, 25]		# dark gray
         self.ColorPalette2[15] = [128,128,128]		# gray
 
+        # TODO: maybe we should swap colors #1 and #13.  #13 makes a better partner with #0, which
+        #       could be preferable for small range palettes, such as 2 tones or 4 tones.
+        # TESTING THIS HERE:
+        self.ColorPalette2[ 1] = [  0, 51,128]		# dark blue
+        self.ColorPalette2[13] = [142, 67,240]		# violet
+
         # NOTE: When re-ordering colors, remember to change the names too in ColorDialog() below
 
 
@@ -81,8 +87,14 @@ class ColorPalette():
 
 
     #--- replacement for pg.intColor() as used in this project
+    #
+    # palette accepts:	'auto'       = default
+    #                   'accessible' = use hardcoded palette
+    #                   'rainbow'    = use auto-generated HUE rainbow
+    #                   'dual'       = use two-color palette for even/odd viewing
+    #                   'mono'       = one dark color only
 
-    def intColor(self, index=0, range=9):
+    def intColor(self, index=0, range=9, palette=None):
 
         #--- Sanity-check arguments
 
@@ -103,17 +115,26 @@ class ColorPalette():
         if range > 0:
             index = index % range
 
+        #--- dual-tone palette
+
+        if palette=='mono':
+            r,g,b = [ 25, 25, 25]		# dark gray
+            return QColor(r,g,b,255)
+
+        if palette=='dual':
+            r,g,b = self.ColorPalette2[index % 2]
+            return QColor(r,g,b,255)
+
+        if palette=='accessible':
+            index = index % len(self.ColorPalette2)
+            r,g,b = self.ColorPalette2[index]
+            return QColor(r,g,b,255)
+
         #--- Few colors requested: Use the hardcoded palette
 
-        if range <= self.recommendedSize:
-
-            #--- Convert to native format
-
+        if (palette!='rainbow') and (range <= self.recommendedSize):
             r,g,b = self.ColorPalette2[index]
-            a     = 255
-            color = QColor(r,g,b,a)
-
-            return color
+            return QColor(r,g,b,255)
 
         #--- Many colors requested: Generate a rainbow palette
         #
@@ -207,7 +228,8 @@ class ColorDialog(QtFixes.QDialog):
         clayout = QHBoxLayout()
         self.cbColor = QComboBox()
         self.cbColor.addItem("Dark red",  0)
-        self.cbColor.addItem("Violet",  1)
+        # self.cbColor.addItem("Violet",  1)
+        self.cbColor.addItem("Dark blue",  1)
         self.cbColor.addItem("Gold",  2)
         self.cbColor.addItem("Blue",  3)
         self.cbColor.addItem("Pastel pink",  4)
@@ -377,8 +399,8 @@ class GraphWidget(QWidget):
         self.actionPersistance.setChecked(enabled)
         self.persistant = enabled
         
-    def setColorInt(self, colorint, numcolors=16):
-        self.color = self.colorPalette.intColor(colorint, numcolors)
+    def setColorInt(self, colorint, numcolors=16, palette=None):
+        self.color = self.colorPalette.intColor(colorint, numcolors, palette=palette)
 
     def colorPrompt(self, enabled):
         """Prompt user to set colours"""
