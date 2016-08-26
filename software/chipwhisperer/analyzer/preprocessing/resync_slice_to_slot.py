@@ -182,13 +182,18 @@ class ResyncSliceToSlot(PreprocessingBase):
                                  " * **Peak max(x)-mean(x):** Difference of mean and max as single peak\n"\
                                  " * **Peak max(x)-min(x):** Difference of min and max as single peak\n"\
                                  "\n"\
+                                 " * **Peak max3():** Like max(), but using mean of 3 samples instead of 1.\n"\
+                                 "\n"\
                                  " * **Peak sum(x):** Sum all samples of the slice / range into a single peak\n"\
                                  " * **Peak sum(x-mean(x)):** Like above, with an offset applied for mean to be zero (DC removed)\n"\
                                  " * **Peak sum(x-min(x)):** Like above, with an offset applied for min to be zero\n",
                                                 'values':util.dictSort({"Copy":"copy",
                                                           "Peak: max(x)":"peak_max",
-                                                          "Peak: max(x)-mean(x)":"peak_meanmax",
-                                                          "Peak: max(x)-min(x)":"peak_minmax",
+                                                          "Peak: max(x)-mean(x)":"peak_maxmean",
+                                                          "Peak: max(x)-min(x)":"peak_maxmin",
+                                                          "Peak: max3(x)":"peak_max3",
+                                                          "Peak: max3(x)-mean(x)":"peak_max3mean",
+                                                          "Peak: max3(x)-min(x)":"peak_max3min",
                                                           "Peak: sum(x)":"peak_sum",
                                                           "Peak: sum(x-mean(x))":"peak_sum_mean",
                                                           "Peak: sum(x-min(x))":"peak_sum_above_min"}),
@@ -388,12 +393,26 @@ class ResyncSliceToSlot(PreprocessingBase):
 
                     #--- calc peak height
 
-                    if (self.output_method == 'peak_max'):
+                    if (self.output_method[:9] == 'peak_max3'):
+                        peak_offset = np.argmax(trace[slice_start:slice_stop])
+                        peak_start  = slice_start + max(peak_offset-1, 0)
+                        peak_stop   = slice_start + min(peak_offset+2, slice_len)
+
+                        peak = np.nanmean(trace[peak_start:peak_stop])
+                        if (self.output_method == 'peak_max3mean'):
+                            peak = peak - np.nanmean(trace[slice_start:slice_stop])
+                        elif (self.output_method == 'peak_max3min'):
+                            min_offset = np.argmin(trace[slice_start:slice_stop])
+                            min_start  = slice_start + max(min_offset-1, 0)
+                            min_stop   = slice_start + min(min_offset+2, slice_len)
+                            peak = peak - np.nanmean(trace[min_start:min_stop])
+
+                    elif (self.output_method[:8] == 'peak_max'):
                         peak = np.nanmax(trace[slice_start:slice_stop])
-                    elif (self.output_method == 'peak_meanmax'):
-                        peak = np.nanmax(trace[slice_start:slice_stop]) - np.nanmean(trace[slice_start:slice_stop])
-                    elif (self.output_method == 'peak_minmax'):
-                        peak = np.nanmax(trace[slice_start:slice_stop]) - np.nanmin(trace[slice_start:slice_stop])
+                        if (self.output_method == 'peak_maxmean'):
+                            peak = peak - np.nanmean(trace[slice_start:slice_stop])
+                        elif (self.output_method == 'peak_maxmin'):
+                            peak = peak - np.nanmin(trace[slice_start:slice_stop])
 
                     else:
                         base = 0
