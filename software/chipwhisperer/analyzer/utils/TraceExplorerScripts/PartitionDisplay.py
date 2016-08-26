@@ -448,6 +448,7 @@ class PartitionDisplay(Parameterized, AutoScript):
                             'partDiffs', obj='ted')
         self.addFunction('displayPartitionStats', 'displayPartitions', 'differences={"partclass":%s, "diffs":partDiffs}' % partMethodStr, obj='ted')
         self.addFunction('displayPartitionStats', 'poi.setDifferences', 'partDiffs', obj='ted')
+        self.addFunction('displayPartitionStats', 'hide', '', '', obj='progressBar')
 
         #---- ACTION: Keeloq
 
@@ -466,6 +467,7 @@ class PartitionDisplay(Parameterized, AutoScript):
                             'partDiffs', obj='ted')
         self.addFunction('displayKeeloqStats', 'displayPartitions', 'differences={"partclass":%s, "diffs":partDiffs}' % partMethodStr, obj='ted')
         self.addFunction('displayKeeloqStats', 'poi.setDifferences', 'partDiffs', obj='ted')
+        self.addFunction('displayKeeloqStats', 'hide', '', '', obj='progressBar')
 
         #---- ACTION: Calc POI
 
@@ -776,7 +778,7 @@ class PartitionDisplay(Parameterized, AutoScript):
                 np.savez(fname["abs"], mean=A_k, variance=Q_k, number=ACnt)
                 cfgsec["filename"] = fname["rel"]
 
-        if progressBar: progressBar.hide()
+        # if progressBar: progressBar.hide()
         return stats
 
     #---
@@ -833,7 +835,7 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         if progressBar:
             progressBar.updateStatus(progressBar.maximum)
-            progressBar.setWindowTitle('Debug Fail')
+            # progressBar.setWindowTitle('Debug Fail')
             if progressBar.wasAborted():
                 return
 
