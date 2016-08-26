@@ -56,11 +56,9 @@ class DifferenceModeTTest(object):
             pbDialog.setMinimum(0)
             pbDialog.setMaximum(numkeys * numparts)
 
-        # TODO: This is because we run through loop multiple times
-        # When numparts == 2 (default for rand vs. fixed), we actually
-        # run loop 4 times I think, but with all same data (i.e. part1 vs part2, part2 vs part1)
-        # need to verify this...
-        scalingFactor = 1.0 / (numparts * numparts)
+        # scalingFactor compensates for number of inner loop executions, to arrive at mean(ttests) rather than sum(ttests)
+        loopIterations = numparts * (numparts-1) / 2
+        scalingFactor  = 1.0 / loopIterations
 
         SADSeg = np.zeros((numkeys, numpoints))
         for bnum in range(0, numkeys):
@@ -70,7 +68,10 @@ class DifferenceModeTTest(object):
                     util.updateUI()
                     if pbDialog.wasAborted():
                         return SADSeg
-                for j in range(0, numparts):
+                for j in range(i+1, numparts):
+                    #          ^^^ Starting at i+1 because all comparisons j<i have been done already in previous
+                    #              iterations of the parent loop, and comparison j==i wastes time with add(0)
+
                     if means[bnum][i] is not None and means[bnum][j] is not None:
 
                         ttest = np.subtract(means[bnum][i], means[bnum][j])
@@ -81,7 +82,11 @@ class DifferenceModeTTest(object):
                         # Therefore we replace ALL unexpected results with 0 (not just NaNs, as the original code did).
                         ttest[~np.isfinite(ttest)] = 0
 
-                        SADSeg[bnum] = np.add(SADSeg[bnum], np.abs(ttest) * scalingFactor)
+                        # calculate sum(ttests) here, apply scalingFactor after the loop (faster)
+                        SADSeg[bnum] = np.add(SADSeg[bnum], np.abs(ttest))
+
+            # calculate mean(ttests) = sum(ttests) / count
+            SADSeg[bnum] = np.multiply(SADSeg[bnum], scalingFactor)
 
         if pbDialog:
             pbDialog.updateStatus(numkeys * numparts)
@@ -96,7 +101,7 @@ class DifferenceModeSAD(object):
 
     def difference(self, numkeys, numparts, trace, numpoints, stats, pbDialog=None):
 
-        averageData = stats["mean"]
+        means = stats["mean"]
 
         if pbDialog:
             pbDialog.setMinimum(0)
@@ -110,9 +115,13 @@ class DifferenceModeSAD(object):
                     util.updateUI()
                     if pbDialog.wasAborted():
                         return SADSeg
-                for j in range(0, numparts):
-                    if averageData[bnum][i] is not None and averageData[bnum][j] is not None:
-                        SADSeg[bnum] = np.add(SADSeg[bnum], np.abs(np.subtract(averageData[bnum][i], averageData[bnum][j])))
+                for j in range(i+1, numparts):
+                    if means[bnum][i] is not None and means[bnum][j] is not None:
+                        SADSeg[bnum] = np.add(SADSeg[bnum], np.abs(np.subtract(means[bnum][i], means[bnum][j])))
+
+            # MARC: calculate mean(sads) = sum(sads) / count
+            SADSeg[bnum] = np.divide(SADSeg[bnum], numparts * (numparts-1) / 2)
+
         return SADSeg
 
 
