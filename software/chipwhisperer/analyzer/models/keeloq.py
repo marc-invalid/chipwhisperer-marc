@@ -70,6 +70,32 @@ def keeloqDecryptKeybitHD(data, keybit):
     decrypt = keeloqDecryptKeybit(data, keybit)
     return decrypt, keeloqGetHD(data, decrypt)
 
+#---
+
+def keeloqDecrypt(data, key):
+    for round in range(0,528):
+        keybit = (key >> ((591-round) % 64)) % 2
+        data = keeloqDecryptKeybit(data, keybit)
+    return data
+
+#----
+
+def keeloqDecryptKeystream(data, keystream=None, round=528):
+
+    if keystream is not None:
+        for i in range(0, len(keystream)):
+            if keystream[i]=='0':
+                keybit = 0
+            elif keystream[i]=='1':
+                keybit = 1
+            else:
+                # silently skip whitespace and other unknown chars
+                continue
+            data = keeloqDecryptKeybit(data, keybit)
+
+            round -= 1
+
+    return data, round
 
 #--- KEELOQ: Test
 
