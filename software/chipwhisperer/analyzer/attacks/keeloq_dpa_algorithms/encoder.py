@@ -29,17 +29,17 @@ from chipwhisperer.common.api.CWCoreAPI import CWCoreAPI
 
 
 
-class KeeloqDPAEncoder(Parameterized, AutoScript, Plugin):
+class KeeloqDPAEncoderBit(Parameterized, AutoScript, Plugin):
     """
-    CPA Attack done as a loop, but using an algorithm which can progressively add traces & give output stats
+    DPA attack using bit-model, working each of the encoder output bits separately
     """
-    _name = "Hardware Encoder (HCS301)"
+    _name = "Hardware Encoder: bit-model"
 
     def __init__(self, targetModel, leakageFunction):
         AutoScript.__init__(self)
 
         self.getParams().addChildren([
-            # {'name': '', 'type': 'label', 'value':"Attack-speficic options", 'readonly': True},
+            {'name': '', 'type': 'label', 'value':"Demo: cipherSUM round528=301 width=3", 'readonly': True},
             {'name':'Utilize round timing', 'key':'roundtiming', 'type':'bool', 'value':False, 'action':self.updateScript,
                          'help': "Utilize round timing:\n"\
                                  "---------------------\n\n"\
