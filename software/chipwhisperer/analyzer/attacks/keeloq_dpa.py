@@ -57,7 +57,7 @@ class Keeloq_DPA(AttackBaseClass, AttackKeeloqParameters):
                                  "\n"\
                                  "NOTE: The cipher applies the keystream over time, not instantly.\n"\
                                  "\n",
-                                     'value':4, 'default':4, 'limits':(0, 528), 'action':self.updateScript},
+                                     'value':4, 'default':4, 'limits':(0, 8), 'action':self.updateScript},
                 {'name':'Known keystream',          'key':'keystream', 'type':'text', 'value':'', 'default':'', 'action':self.updateScript},
             ]},
 
