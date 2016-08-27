@@ -77,7 +77,7 @@ def printRoundPos(round, configObj=None):
 
 class keeloqPartition_Ciphertext(PartitionBase):
 
-    _name = "Keeloq: Data (all bits)"
+    _name = "Keeloq: bit(status[all])"
     _description = ""
 
     def setConfig(self, config=None):
@@ -100,7 +100,7 @@ class keeloqPartition_Ciphertext(PartitionBase):
 
 class keeloqPartition_CiphertextMSB(PartitionBase):
 
-    _name = "Keeloq: Data (msb only)"
+    _name = "Keeloq: bit(status[msb])"
     _description = ""
 
     def setConfig(self, config=None):
@@ -130,7 +130,7 @@ class keeloqPartition_CiphertextMSB(PartitionBase):
 
 class keeloqPartition_123back(PartitionBase):
 
-    _name = "Keeloq: HD(data) 1+2+3 rounds back"
+    _name = "Keeloq: hd(status) 1+2+3 rounds back"
     _description = ""
 
     def setConfig(self, config=None):
@@ -192,7 +192,7 @@ class keeloqPartition_123back(PartitionBase):
 
 class keeloqPartition_1234back(PartitionBase):
 
-    _name = "Keeloq: HD(data) 1+2+3+4 rounds back"
+    _name = "Keeloq: hd(status) 1+2+3+4 rounds back"
     _description = ""
 
     def setConfig(self, config=None):
@@ -253,7 +253,7 @@ class keeloqPartition_1234back(PartitionBase):
 
 class keeloqPartition_Nback(PartitionBase):
 
-    _name = "Keeloq: HD(data) N rounds back"
+    _name = "Keeloq: hd(status) N rounds back"
     _description = ""
 
     def setConfig(self, config=None):
@@ -294,7 +294,7 @@ class keeloqPartition_Nback(PartitionBase):
 
 class keeloqPartition_BitNback(PartitionBase):
 
-    _name = "Keeloq: bit(msb) N rounds back"
+    _name = "Keeloq: bit(status[msb]) N rounds back"
     _description = ""
 
     def setConfig(self, config=None):
