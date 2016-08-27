@@ -497,9 +497,13 @@ class PartitionDisplay(Parameterized, AutoScript):
     #          into the TraceExplorer dock.
 
     def initPartitionFromAttack(self, userscript=None, partObject=None):
+        # TODO: often partObject==self, redundant?
         attack = userscript.cwagui.attackScriptGen.getAttack()
         if (attack is not None) and hasattr(attack, "initPartitionFromAttack"):
-            attack.initPartitionFromAttack(userscript, partObject)
+            self.partConfig = attack.initPartitionFromAttack(userscript, partObject)
+            # retain a copy of the latest config for our own use
+        else:
+            self.partConfig = None
 
     #---
 
