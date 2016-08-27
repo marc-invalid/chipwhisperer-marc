@@ -70,7 +70,7 @@ def keeloqDecryptKeybitHD(data, keybit):
     decrypt = keeloqDecryptKeybit(data, keybit)
     return decrypt, keeloqGetHD(data, decrypt)
 
-#---
+#--- KEELOQ: Full decrypt
 
 def keeloqDecrypt(data, key):
     for round in range(0,528):
@@ -78,23 +78,18 @@ def keeloqDecrypt(data, key):
         data = keeloqDecryptKeybit(data, keybit)
     return data
 
-#----
+#--- KEELOQ: Filter keystream so it only contains valid chars "01"
+
+def keeloqFilterKeystream(keystream=None):
+    return filter(lambda ch: ch in "01", keystream) if (keystream is not None) else ""
+
+#--- KEELOQ: Partial decrypt with keystream
 
 def keeloqDecryptKeystream(data, keystream=None, round=528):
-
-    if keystream is not None:
-        for i in range(0, len(keystream)):
-            if keystream[i]=='0':
-                keybit = 0
-            elif keystream[i]=='1':
-                keybit = 1
-            else:
-                # silently skip whitespace and other unknown chars
-                continue
-            data = keeloqDecryptKeybit(data, keybit)
-
-            round -= 1
-
+    keystream = keeloqFilterKeystream(keystream)
+    for i in range(0, len(keystream)):
+        data = keeloqDecryptKeybit(data, int(keystream[i]))
+    round -= len(keystream)
     return data, round
 
 #--- KEELOQ: Test
