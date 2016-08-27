@@ -507,70 +507,92 @@ class PartitionDisplay(Parameterized, AutoScript):
 
     #---
 
-    def generatePartitionStats_KEELOQ(self, partitionData={"partclass":None}, saveFile=False, loadFile=False,  tRange=(0, -1), progressBar=None):
-        print "REACHED #1"
-#        self.partObject.setPartMethod(partitionData["partclass"])
+    def generatePartitionStats_KEELOQ(self, partitionData={"partclass":None, "partconfig":None}, saveFile=False, loadFile=False,  tRange=(0, -1), progressBar=None):
+
         partClass = partitionData["partclass"]
 
-        rounds = 1
-        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_rounds'):
-            rounds = CWCoreAPI.getInstance().kludge_keeloq_rounds
+        #--- read config
 
-        round528   = 3030
-        roundwidth = 30
+        config = None
+        if hasattr(partitionData, 'partconfig') and (partitionData["partconfig"] is not None):
+            config = partitionData["partconfig"]
+        elif hasattr(self, 'partConfig'):
+            config = self.partConfig
 
-        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_roundwidth'):
-            roundwidth = CWCoreAPI.getInstance().kludge_keeloq_roundwidth
-        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_round528'):
-            round528   = CWCoreAPI.getInstance().kludge_keeloq_round528
+        if config is not None:
+            maxdepth   = config['depth']
+            round528   = config['round528']
+            roundwidth = config['roundwidth']
+        else:
+            maxdepth   = 1
+            round528   = 1
+            roundwidth = 1
+
+        print "generatePartitionStats_KEELOQ(): Using depth=%d round528=%d width=%d" % (maxdepth, round528, roundwidth)
+
+        #---
 
         allStats = None
 
-        for round in range(0, max(rounds,1)):
+        # we'll be changing values, so we make a copy
+        config = config.copy() if (config is not None) else {}
 
-            #--- prepare:
+        for round in range(0, max(maxdepth,1)):
+
+            #--- prepare
 
             depth      = round+1
 
             roundStart = round528 - (round * roundwidth)
             roundStop  = roundStart + roundwidth
 
-            factor     = 2**(rounds-depth)
+            factor     = 2**(maxdepth-depth)
 
-            #--- execute:
+            print "round=%d depth=%d maxdepth=%d factor=%d" % (round, depth, maxdepth, factor)
 
-            CWCoreAPI.getInstance().kludge_keeloq_rounds = depth
+            #--- probe at current depth
 
-            # MARC: TODO: Hey we could pass an argument transparently, something like partitionArgs={"depth":5, "keystream":"0100"}
-            #             That would solve most (all?) our kludgy problems both with GUI action as well as scripted action!
-            partData  = self.partObject.generatePartitions(saveFile=saveFile, loadFile=loadFile, tRange=tRange)
+            config['depth'] = depth
+
+            partData  = self.partObject.generatePartitions(saveFile=saveFile, loadFile=loadFile, tRange=tRange, partitionConfig=config)
 
             partStats = self.generatePartitionStats(partitionData={"partclass":partClass, "partdata":partData},
                         saveFile=saveFile, loadFile=loadFile, tRange=tRange, progressBar=progressBar, pointRange=(roundStart, roundStop))
 
-            if factor > 1:
-                partStats = self.inflatePartitionStats(partStats, factor=factor)
+            # print "generatePartitionStats gave numKeys=%d numPartitions=%d" % (len(partStats["mean"]), len(partStats["mean"][0]))
 
-            #--- append to
+            #--- append to previous probe results
+
+            if factor > 1:
+                partStats = self.inflatePartitionStats(partStats, factor=factor, interleave=False)
+                # print "inflated with factor=%d to numKeys=%d numPartitions=%d" % (factor, len(partStats["mean"]), len(partStats["mean"][0]))
 
             if allStats == None:
-                print "append mode: USE round=%d depth=%d pos=(%d,%d) factor=%d" % (round, depth, roundStart, roundStop, factor)
+                # print "append mode: USE round=%d depth=%d pos=(%d,%d) factor=%d" % (round, depth, roundStart, roundStop, factor)
                 allStats = partStats
             else:
-                print "append mode: APPEND round=%d depth=%d pos=(%d,%d) factor=%d" % (round, depth, roundStart, roundStop, factor)
+                # print "append mode: APPEND round=%d depth=%d pos=(%d,%d) factor=%d" % (round, depth, roundStart, roundStop, factor)
                 allStats = self.appendPartitionStats(partStats, allStats)
-
-            #break
-
-        # restore original value
-        CWCoreAPI.getInstance().kludge_keeloq_rounds = rounds
+                # print "appended, resulting in numKeys=%d numPartitions=%d" % (len(allStats["mean"]), len(allStats["mean"][0]))
 
         return allStats
 
 
-    #---
+    #--- Append two STATS arrays
+    #
+    #    The two arrays must have identical layout, except for the number of samples covered within.
+    #    Returns the new merged STATS array, although the current implementation may damage the stats1 input.
+    #    Recommended use case: stats1 = append(stats1, stats2)
 
     def appendPartitionStats(self, stats1=None, stats2=None):
+
+        if len(stats1["mean"]) != len(stats2["mean"]):
+            print "ERROR: appendPartitionStats() incompatible numKeys %d vs %d" % (len(stats1["mean"]), len(stats2["mean"]))
+            return stats1
+
+        if len(stats1["mean"][0]) != len(stats2["mean"][0]):
+            print "ERROR: appendPartitionStats() incompatible numPartitions %d vs %d" % (len(stats1["mean"][0]), len(stats2["mean"][0]))
+            return stats1
 
         numKeys       = len(stats1["mean"])
         numPartitions = len(stats1["mean"][0])
@@ -578,16 +600,12 @@ class PartitionDisplay(Parameterized, AutoScript):
         for bnum in range(0, numKeys):
             for i in range(0, numPartitions):
 
-                #stats1["mean"    ][bnum][i].append(stats2["mean"    ][bnum][i])
-                #stats1["variance"][bnum][i].append(stats2["variance"][bnum][i])
-                #stats1["number"  ][bnum][i].append(stats2["number"  ][bnum][i])
-
                 #--- convert "number" from scalar to array
                 #
-                #    The traditional partitioning always worked on whole traces, so "number" (sample number for t-test)
-                #    may be scalar.  In our "sliced" partitioning, the number of samples at one point may be different
-                #    than at another point.  Therefore we need to make sure that "number" is converted to an array of
-                #    corresponding length, and also that subsequent operations (such as t-test) don't choke on it.
+                #    Normal partitioning works on whole traces, so "number" (sample count for t-test) may be a scalar.
+                #    With "sliced" partitioning, the number of samples at one point may be different than at another
+                #    point.  Therefore we need to make sure that "number" is converted to an array of corresponding
+                #    length, and also that subsequent operations (such as t-test) don't choke on it.
 
                 len1 = len(stats1["mean"][bnum][i])
                 len2 = len(stats2["mean"][bnum][i])
@@ -607,9 +625,23 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         return stats1
 
-    #---
+    #--- Inflate a STATS array
+    #
+    #    Grow the "numKeys" (or "bnum") dimension of the array by an integer factor.
+    #    Useful to match the layout to another given array with higher numKeys (eg.
+    #    in a binary tree where numKeys doubles with each iteration).
+    #
+    #    The array content can be resized in two ways:
+    #
+    #    interleave=False: Content is repeated as block, several times.  The first
+    #                      section of the output will look same as the input.
+    #
+    #    interleave=True:  Each element is repeated several times, then the next
+    #                      element.
+    #
+    #    --------------->  NOTE: interleave==True is not yet implemented !!!
 
-    def inflatePartitionStats(self, stats=None, factor=1, append=True):
+    def inflatePartitionStats(self, stats=None, factor=1, interleave=False):
 
         inKeys = len(stats["mean"])
 
@@ -617,7 +649,7 @@ class PartitionDisplay(Parameterized, AutoScript):
         Q_k  = []
         ACnt = []
 
-        if append == True:
+        if not interleave:
 
             # repeat blocks of all elements
 
@@ -638,7 +670,7 @@ class PartitionDisplay(Parameterized, AutoScript):
             # repeat each element individually
 
 # FIXME: broken, the outkey index is missing!  See above for how it has to be done
-            print "FIXME: Using broken path in inflatePartitionStats()"
+            print "FIXME: Executing broken code path in inflatePartitionStats(): interleave==True"
             outKey = 0
             for inKey in range(0, inKeys):
                 for clone in range(0, factor):
@@ -808,7 +840,6 @@ class PartitionDisplay(Parameterized, AutoScript):
         numPartitions = len(statsInfo["stats"]["mean"][0])
         numPoints     = len(statsInfo["stats"]["mean"][0][0])
         # print "generatePartitionDiffs: using numKeys=%d numPartitions=%d" % (self.numKeys, numPartitions)
-
 
         foundsecs = []
         if loadFile:

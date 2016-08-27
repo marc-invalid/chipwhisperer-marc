@@ -14,33 +14,32 @@ from chipwhisperer.analyzer.models.keeloq import keeloqEncryptKeybit
 from chipwhisperer.analyzer.models.keeloq import keeloqEncryptKeybitHD
 from chipwhisperer.analyzer.models.keeloq import keeloqDecryptKeybit
 from chipwhisperer.analyzer.models.keeloq import keeloqDecryptKeybitHD
+from chipwhisperer.analyzer.models.keeloq import keeloqDecryptKeystream
 from chipwhisperer.analyzer.models.keeloq import keeloqGetHW
 from chipwhisperer.analyzer.models.keeloq import keeloqGetHD
 
 from chipwhisperer.common.api.CWCoreAPI import CWCoreAPI
 
 
+#------ Helper for parsing partConfig into partMethod object
 
-#------ KEELOQ: Ciphertext
-#
-#       This partitions using each of the 32 ciphertext bits individually.
-#       Identifies when exactly they are produced, thus revealing location
-#       and timing of the cipher.
+def parseConfig(obj, config=None):
+        obj.config     = config
+        obj.depth      = config.get('depth'     ) if config is not None else None
+        obj.keystream  = config.get('keystream' ) if config is not None else None
+        obj.round528   = config.get('round528'  ) if config is not None else None
+        obj.roundwidth = config.get('roundwidth') if config is not None else None
 
-class keeloqPartition_Ciphertext(PartitionBase):
 
-    _name = "Keeloq: Data bits"
-    _description = ""
+#------ Helper for fetching ciphertext data and partial decrypt according to partConfig
 
-    # def __init__(self):
-    #     PartitionBase.__init__(self)
-    #     self.updateScript()
+def prepareData(trace, tnum, keystream=None, configObj=None):
 
-    def getNumPartitions(self):
-        # each bit is either 0 or 1
-        return 2
+        if (keystream is None) and (configObj is not None) and hasattr(configObj, "keystream"):
+            keystream = configObj.keystream
 
-    def getPartitionNum(self, trace, tnum):
+        #--- get ciphertext
+
         textout = trace.getTextout(tnum)
 
         if (textout is not None) and (len(textout) >= 4):
@@ -51,34 +50,72 @@ class keeloqPartition_Ciphertext(PartitionBase):
 
         #--- skip already known/guessed keybits
 
-        # Example:
-        # data = keeloqDecryptKeybit(data, 0)		# remove round 528
-        # data = keeloqDecryptKeybit(data, 1)		# remove round 527
-        # data = keeloqDecryptKeybit(data, 0)		# remove round 526
+        data, round = keeloqDecryptKeystream(data, keystream, round=528)
+        return data, round
 
-        currentround = 528
 
-        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_keystream'):
-            keystream = CWCoreAPI.getInstance().kludge_keeloq_keystream
-            for i in range(0, len(keystream)):
-                if keystream[i]=='0':
-                    keybit = 0
-                elif keystream[i]=='1':
-                    keybit = 1
-                else:
-                    # silently skip whitespace and other unknown chars
-                    continue
-                data = keeloqDecryptKeybit(data, keybit)
-                currentround -= 1
+#------ Helper for printing advice to user on where to look for POIs
 
-        #---
+def printRoundPos(round, configObj=None):
+        if(configObj is None) or not hasattr(configObj, "round528") or not hasattr(configObj, "roundwidth"):
+            return
 
-        # assume little-endian bit order, trace #0 is what is calculated last and sent first over RF
+        round528   = configObj.round528
+        roundwidth = configObj.roundwidth
+
+        if roundwidth > 0:
+            roundstart = round528 - ((528-round)*roundwidth)
+            roundstop  = roundstart + roundwidth
+            print "For round %d look at %d-%d" % (round, roundstart, roundstop-1)
+
+
+#------ KEELOQ: Ciphertext
+#
+#       This partitions using each of the 32 ciphertext bits individually.
+#       Identifies when exactly they are produced, thus revealing location
+#       and timing of the cipher.
+
+class keeloqPartition_Ciphertext(PartitionBase):
+
+    _name = "Keeloq: Data (all bits)"
+    _description = ""
+
+    def setConfig(self, config=None):
+        parseConfig(self, config)
+
+    def getNumPartitions(self):
+        return 2
+
+    def getPartitionNum(self, trace, tnum, keystream=None):
+        data, round = prepareData(trace, tnum, keystream, self)
+
+        # assume little-endian bit order, output #0 is what is calculated last and sent first over RF
         guess = [0] * 32
         for i in range(0, 32):
             guess[i] = (data >> (31-i)) % 2
         return guess
 
+
+#------ KEELOQ: Ciphertext (only MSB)
+
+class keeloqPartition_CiphertextMSB(PartitionBase):
+
+    _name = "Keeloq: Data (msb only)"
+    _description = ""
+
+    def setConfig(self, config=None):
+        parseConfig(self, config)
+
+    def getNumPartitions(self):
+        return 2
+
+    def getPartitionNum(self, trace, tnum, keystream=None):
+        data, round = prepareData(trace, tnum, keystream, self)
+
+        # assume little-endian bit order, trace #0 is what is calculated last and sent first over RF
+        guess = [0] * 1
+        guess[0] = (data >> 0) % 2
+        return guess
 
 
 #------ KEELOQ: 1+2+3 rounds back
@@ -96,40 +133,15 @@ class keeloqPartition_123back(PartitionBase):
     _name = "Keeloq: HD(data) 1+2+3 rounds back"
     _description = ""
 
+    def setConfig(self, config=None):
+        parseConfig(self, config)
+
     def getNumPartitions(self):
         # We work the 32 bit status register, so there are 33 possible hamming weights
         return 33
 
-    def getPartitionNum(self, trace, tnum):
-        textout = trace.getTextout(tnum)
-
-        if (textout is not None) and (len(textout) >= 4):
-            # assume big-endian byte order
-            data = (textout[0] << 24) | (textout[1] << 16) | (textout[2] << 8) | (textout[3] << 0)
-        else:
-            data = 0
-
-        #--- skip already known/guessed keybits
-
-        # Example:
-        # data = keeloqDecryptKeybit(data, 0)		# remove round 528
-        # data = keeloqDecryptKeybit(data, 1)		# remove round 527
-        # data = keeloqDecryptKeybit(data, 0)		# remove round 526
-
-        currentround = 528
-
-        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_keystream'):
-            keystream = CWCoreAPI.getInstance().kludge_keeloq_keystream
-            for i in range(0, len(keystream)):
-                if keystream[i]=='0':
-                    keybit = 0
-                elif keystream[i]=='1':
-                    keybit = 1
-                else:
-                    # silently skip whitespace and other unknown chars
-                    continue
-                data = keeloqDecryptKeybit(data, keybit)
-                currentround -= 1
+    def getPartitionNum(self, trace, tnum, keystream=None):
+        data, round = prepareData(trace, tnum, keystream, self)
 
         #--- guess decryption 3 rounds deep with all possible key bit values
         #
@@ -174,6 +186,61 @@ class keeloqPartition_123back(PartitionBase):
 
         return guess
 
+#------ KEELOQ: 1+2+3+4 rounds back
+#
+#       Like above, with one more round (adding 16 traces)
+
+class keeloqPartition_1234back(PartitionBase):
+
+    _name = "Keeloq: HD(data) 1+2+3+4 rounds back"
+    _description = ""
+
+    def setConfig(self, config=None):
+        parseConfig(self, config)
+
+    def getNumPartitions(self):
+        return 33
+
+    def getPartitionNum(self, trace, tnum, keystream=None):
+        data, round = prepareData(trace, tnum, keystream, self)
+
+        guess = [0] * (2+4+8+16)
+        data0,   guess[ 0] = keeloqDecryptKeybitHD(data,0)                      # trace  0
+        data1,   guess[ 1] = keeloqDecryptKeybitHD(data,1)                      # trace  1
+
+        data00,  guess[ 2] = keeloqDecryptKeybitHD(data0,0)                     # trace  2
+        data01,  guess[ 3] = keeloqDecryptKeybitHD(data0,1)                     # trace  3
+        data10,  guess[ 4] = keeloqDecryptKeybitHD(data1,0)                     # trace  4
+        data11,  guess[ 5] = keeloqDecryptKeybitHD(data1,1)                     # trace  5
+
+        data000, guess[ 6] = keeloqDecryptKeybitHD(data00,0)                    # trace  6
+        data001, guess[ 7] = keeloqDecryptKeybitHD(data00,1)                    # trace  7
+        data010, guess[ 8] = keeloqDecryptKeybitHD(data01,0)                    # trace  8
+        data011, guess[ 9] = keeloqDecryptKeybitHD(data01,1)                    # trace  9
+        data100, guess[10] = keeloqDecryptKeybitHD(data10,0)                    # trace 10
+        data101, guess[11] = keeloqDecryptKeybitHD(data10,1)                    # trace 11
+        data110, guess[12] = keeloqDecryptKeybitHD(data11,0)                    # trace 12
+        data111, guess[13] = keeloqDecryptKeybitHD(data11,1)                    # trace 13
+
+        data0000, guess[14] = keeloqDecryptKeybitHD(data000,0)                  # trace 14
+        data0001, guess[15] = keeloqDecryptKeybitHD(data000,1)                  # trace 15
+        data0010, guess[16] = keeloqDecryptKeybitHD(data001,0)                  # trace 16
+        data0011, guess[17] = keeloqDecryptKeybitHD(data001,1)                  # trace 17
+        data0100, guess[18] = keeloqDecryptKeybitHD(data010,0)                  # trace 18
+        data0101, guess[19] = keeloqDecryptKeybitHD(data010,1)                  # trace 19
+        data0110, guess[20] = keeloqDecryptKeybitHD(data011,0)                  # trace 20
+        data0111, guess[21] = keeloqDecryptKeybitHD(data011,1)                  # trace 21
+        data1000, guess[22] = keeloqDecryptKeybitHD(data100,0)                  # trace 22
+        data1001, guess[23] = keeloqDecryptKeybitHD(data100,1)                  # trace 23
+        data1010, guess[24] = keeloqDecryptKeybitHD(data101,0)                  # trace 24
+        data1011, guess[25] = keeloqDecryptKeybitHD(data101,1)                  # trace 25
+        data1100, guess[26] = keeloqDecryptKeybitHD(data110,0)                  # trace 26
+        data1101, guess[27] = keeloqDecryptKeybitHD(data110,1)                  # trace 27
+        data1110, guess[28] = keeloqDecryptKeybitHD(data111,0)                  # trace 28
+        data1111, guess[29] = keeloqDecryptKeybitHD(data111,1)                  # trace 29
+
+        return guess
+
 
 
 #------ KEELOQ: N rounds back
@@ -189,74 +256,77 @@ class keeloqPartition_Nback(PartitionBase):
     _name = "Keeloq: HD(data) N rounds back"
     _description = ""
 
+    def setConfig(self, config=None):
+        parseConfig(self, config)
+
     def getNumPartitions(self):
         # We work the 32 bit status register, so there are 33 possible hamming weights
         return 33
 
-    def getPartitionNum(self, trace, tnum):
-        textout = trace.getTextout(tnum)
-
-        if (textout is not None) and (len(textout) >= 4):
-            # assume big-endian byte order
-            data = (textout[0] << 24) | (textout[1] << 16) | (textout[2] << 8) | (textout[3] << 0)
-        else:
-            data = 0
-
-        #--- skip already known/guessed keybits
-
-        # Example:
-        # data = keeloqDecryptKeybit(data, 0)		# remove round 528
-        # data = keeloqDecryptKeybit(data, 1)		# remove round 527
-        # data = keeloqDecryptKeybit(data, 0)		# remove round 526
-
-        currentround = 528
-
-        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_keystream'):
-            keystream = CWCoreAPI.getInstance().kludge_keeloq_keystream
-            for i in range(0, len(keystream)):
-                if keystream[i]=='0':
-                    keybit = 0
-                elif keystream[i]=='1':
-                    keybit = 1
-                else:
-                    # silently skip whitespace and other unknown chars
-                    continue
-                data = keeloqDecryptKeybit(data, keybit)
-                currentround -= 1
+    def getPartitionNum(self, trace, tnum, keystream=None):
+        data, round = prepareData(trace, tnum, keystream, self)
 
         #--- guess decryption N rounds deep with all possible key bit values
 
-        rounds = 4
-        if hasattr(CWCoreAPI.getInstance(), 'kludge_keeloq_rounds'):
-            rounds = CWCoreAPI.getInstance().kludge_keeloq_rounds
+        depth   = max(1, self.depth if hasattr(self, 'depth') and (self.depth is not None) else 4)
+        guesses = 2**depth
+        guess   = [0] * guesses
 
-        rounds  = max(rounds, 1)
-        guesses = 2**rounds
-
-        guess = [0] * guesses
         for key in range(0, guesses):
             guess_data = data
-            guess_key  = key
-            for bit in range(0, rounds):
-                guess_bit  = (guess_key >> bit) % 2
+            for bit in range(0, depth):
+                guess_key  = (key >> bit) % 2
                 guess_prev = guess_data
-                guess_data = keeloqDecryptKeybit(guess_data, guess_bit)
+                guess_data = keeloqDecryptKeybit(guess_data, guess_key)
 
-            guess[key]  = keeloqGetHD(guess_data, guess_prev)
+            guess[key] = keeloqGetHD(guess_data, guess_prev)
 
-#            state1 = guess_data
-#            state2 = guess_prev
-#            hd     = state1 ^ state2
-#            hd1    = hd & state2
-#            guess[key] = keeloqGetHW(hd1)
+            # if tnum==0: print "Trace %d guess_key=0x%02x data=%08x prev=%08x hd=%d" % (tnum, key, guess_data, guess_prev, guess[key])
 
-        currentround -= rounds
+        #--- helpful output
 
-        if tnum==0:
-            poi1 = 102  - ((528 - currentround) *  1)
-            poi2 = 3070 - ((528 - currentround) * 30)
-            poi3 = 205  - ((528 - currentround) *  2)
-            print "Look at %d / %d / %d" % (poi1, poi2, poi3)
+        round -= depth
+        if tnum==0: printRoundPos(round, self)
+
+        return guess
+
+#------ 
+
+class keeloqPartition_BitNback(PartitionBase):
+
+    _name = "Keeloq: bit(msb) N rounds back"
+    _description = ""
+
+    def setConfig(self, config=None):
+        parseConfig(self, config)
+
+    def getNumPartitions(self):
+        return 2
+
+    def getPartitionNum(self, trace, tnum, keystream=None):
+        data, round = prepareData(trace, tnum, keystream, self)
+
+        #--- guess decryption N rounds deep with all possible key bit values
+
+        depth   = max(1, self.depth if hasattr(self, 'depth') and (self.depth is not None) else 4)
+        guesses = 2**depth
+        guess   = [0] * guesses
+
+        for key in range(0, guesses):
+            guess_data = data
+            for bit in range(0, depth):
+                guess_key  = (key >> bit) % 2
+                guess_data = keeloqDecryptKeybit(guess_data, guess_key)
+
+            # assume little-endian bit order, trace #0 is what is calculated last and sent first over RF
+            guess[key] = (guess_data >> 0) % 2
+
+            if tnum<4: print "Trace %d guess_key=0x%02x data=%08x initial=%08x guess=%d" % (tnum, key, guess_data, data, guess[key])
+
+        #--- helpful output
+
+        round -= depth
+        if tnum==0: printRoundPos(round, self)
 
         return guess
 
