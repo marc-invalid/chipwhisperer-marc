@@ -511,6 +511,8 @@ class PartitionDisplay(Parameterized, AutoScript):
 
         partClass = partitionData["partclass"]
 
+        from chipwhisperer.analyzer.models.keeloq import keeloqFilterKeystream
+
         #--- read config
 
         config = None
@@ -518,17 +520,24 @@ class PartitionDisplay(Parameterized, AutoScript):
             config = partitionData["partconfig"]
         elif hasattr(self, 'partConfig'):
             config = self.partConfig
+        # MARC: we could also ask the config back from self.partObject.partMethod, adding another API getConfig()
 
         if config is not None:
             maxdepth   = config['depth']
+            keystream  = config['keystream']
             round528   = config['round528']
             roundwidth = config['roundwidth']
         else:
             maxdepth   = 1
+            keystream  = None
             round528   = 1
             roundwidth = 1
 
-        print "generatePartitionStats_KEELOQ(): Using depth=%d round528=%d width=%d" % (maxdepth, round528, roundwidth)
+
+        keystream = keeloqFilterKeystream(keystream)
+        round     = 528 - len(keystream)
+
+        print "generatePartitionStats_KEELOQ(): Using depth=%d round528=%d width=%d round=%d" % (maxdepth, round528, roundwidth, round)
 
         #---
 
@@ -537,27 +546,29 @@ class PartitionDisplay(Parameterized, AutoScript):
         # we'll be changing values, so we make a copy
         config = config.copy() if (config is not None) else {}
 
-        for round in range(0, max(maxdepth,1)):
+        for i in range(0, max(maxdepth,1)):
 
             #--- prepare
 
-            depth      = round+1
+            probeDepth = i + 1
+            probeRound = round - i
+            probeStart = round528 - ((528-probeRound) * roundwidth)
+            probeStop  = probeStart + roundwidth
 
-            roundStart = round528 - (round * roundwidth)
-            roundStop  = roundStart + roundwidth
+            factor     = 2**(maxdepth-probeDepth)
+            slot       = maxdepth - probeDepth
 
-            factor     = 2**(maxdepth-depth)
-
-            print "round=%d depth=%d maxdepth=%d factor=%d" % (round, depth, maxdepth, factor)
+            print "generatePartitionStats_KEELOQ(): slot=%d is depth=%d factor=%d round=%d points=%d-%d" %\
+                                                 (slot, probeDepth, factor, probeRound, probeStart, probeStop)
 
             #--- probe at current depth
 
-            config['depth'] = depth
+            config['depth'] = probeDepth
 
             partData  = self.partObject.generatePartitions(saveFile=saveFile, loadFile=loadFile, tRange=tRange, partitionConfig=config)
 
             partStats = self.generatePartitionStats(partitionData={"partclass":partClass, "partdata":partData},
-                        saveFile=saveFile, loadFile=loadFile, tRange=tRange, progressBar=progressBar, pointRange=(roundStart, roundStop))
+                        saveFile=saveFile, loadFile=loadFile, tRange=tRange, progressBar=progressBar, pointRange=(probeStart, probeStop))
 
             # print "generatePartitionStats gave numKeys=%d numPartitions=%d" % (len(partStats["mean"]), len(partStats["mean"][0]))
 
@@ -568,10 +579,10 @@ class PartitionDisplay(Parameterized, AutoScript):
                 # print "inflated with factor=%d to numKeys=%d numPartitions=%d" % (factor, len(partStats["mean"]), len(partStats["mean"][0]))
 
             if allStats == None:
-                # print "append mode: USE round=%d depth=%d pos=(%d,%d) factor=%d" % (round, depth, roundStart, roundStop, factor)
+                # print "append mode: USE slot=%d depth=%d round=%d pos=(%d,%d) factor=%d" % (slot, probeDepth, probeRound, probeStart, probeStop, factor)
                 allStats = partStats
             else:
-                # print "append mode: APPEND round=%d depth=%d pos=(%d,%d) factor=%d" % (round, depth, roundStart, roundStop, factor)
+                # print "append mode: APPEND slot=%d depth=%d round=%d pos=(%d,%d) factor=%d" % (slot, probeDepth, probeRound, probeStart, probeStop, factor)
                 allStats = self.appendPartitionStats(partStats, allStats)
                 # print "appended, resulting in numKeys=%d numPartitions=%d" % (len(allStats["mean"]), len(allStats["mean"][0]))
 
@@ -581,7 +592,7 @@ class PartitionDisplay(Parameterized, AutoScript):
     #--- Append two STATS arrays
     #
     #    The two arrays must have identical layout, except for the number of samples covered within.
-    #    Returns the new merged STATS array, although the current implementation may damage the stats1 input.
+    #    Returns the new merged STATS array, although the current implementation may alter the stats1 input.
     #    Recommended use case: stats1 = append(stats1, stats2)
 
     def appendPartitionStats(self, stats1=None, stats2=None):
