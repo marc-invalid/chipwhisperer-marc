@@ -658,13 +658,17 @@ class PartitionDisplay(Parameterized, AutoScript):
         if tRange[1] < 0:
             tRange = (tRange[0], traces.numTraces() + 1 + tRange[1])
 
-        self.partObject.setPartMethod(partitionData["partclass"])
-        numPartitions = self.partObject.partMethod.getNumPartitions()
-
         if partitionData["partdata"] is not None:
-            self.numKeys = len(partitionData["partdata"])
+            self.numKeys  = len(partitionData["partdata"])
+            numPartitions = len(partitionData["partdata"][0])
         else:
-            self.numKeys = len(self.partObject.partMethod.getPartitionNum(traces, 0))
+            print "WARNING: generatePartitionStats() deprecated code path should never execute"
+            # MARC: Deprecated because it replaces the method instance and all associated config with it.
+            #       Should never be necessary anyway, because we can extract the required from partdata.
+            self.partObject.setPartMethod(partitionData["partclass"])
+            self.numKeys  = len(self.partObject.partMethod.getPartitionNum(traces, 0))
+            numPartitions = self.partObject.partMethod.getNumPartitions()
+        # print "generatePartitionStats: using numKeys=%d numPartitions=%d" % (self.numKeys, numPartitions)
 
         pointStart = max(pointRange[0], 0)
         pointStop  = pointRange[1] if (pointRange[1] >= 0) else traces.numPoints() + 1 + pointRange[1]
@@ -794,13 +798,17 @@ class PartitionDisplay(Parameterized, AutoScript):
         if tRange[1] < 0:
             tRange = (tRange[0], traces.numTraces() + 1 + tRange[1])
 
-        self.partObject.setPartMethod(statsInfo["partclass"])
+        # self.partObject.setPartMethod(statsInfo["partclass"])
+        # MARC: Deprecated because it replaces the method instance and all associated config with it.
+
         self.diffObject.setDiffMethod(diffModule)
 
-        # MARC: extract number of traces / points from input data (rather than global config)
-        self.numKeys = len(statsInfo["stats"]["mean"])
+        # extract layout from input data
+        self.numKeys  = len(statsInfo["stats"]["mean"])
+        numPartitions = len(statsInfo["stats"]["mean"][0])
+        numPoints     = len(statsInfo["stats"]["mean"][0][0])
+        # print "generatePartitionDiffs: using numKeys=%d numPartitions=%d" % (self.numKeys, numPartitions)
 
-        numPoints = len(statsInfo["stats"]["mean"][0][0])
 
         foundsecs = []
         if loadFile:
@@ -825,7 +833,7 @@ class PartitionDisplay(Parameterized, AutoScript):
             if progressBar:
                 progressBar.setWindowTitle("Phase 2: Calculating Partition Differences")
                 progressBar.setText("Calculating all Differences based on " + self.diffObject.mode.differenceType)
-            SADList = self.diffObject.difference(self.numKeys, self.partObject.partMethod.getNumPartitions(), None, numPoints, statsInfo["stats"], progressBar)
+            SADList = self.diffObject.difference(self.numKeys, numPartitions, None, numPoints, statsInfo["stats"], progressBar)
 
             if saveFile:
                 cfgsec = self.api.project().addDataConfig(sectionName="Trace Statistics", subsectionName="Partition Differences")
@@ -855,9 +863,10 @@ class PartitionDisplay(Parameterized, AutoScript):
         if tRange[1] < 0:
             tRange = (tRange[0], traces.numTraces() + 1 + tRange[1])
 
-        self.partObject.setPartMethod(differences["partclass"])
-        self.numKeys = len(self.partObject.partMethod.getPartitionNum(traces, 0))
-        # MARC: should get numKeys from input data! something like self.numKeys = len(differences["diffs"][0])
+        # self.partObject.setPartMethod(differences["partclass"])
+        # MARC: Deprecated because it replaces the method instance and all associated config with it.
+
+        self.numKeys = len(differences["diffs"])
         self.SADList = differences["diffs"]
 
         # Place byte selection option on graph
