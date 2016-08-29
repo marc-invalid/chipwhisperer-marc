@@ -63,6 +63,8 @@ class Keeloq_DPA(AttackBaseClass, AttackKeeloqParameters):
 
 
         ])
+        self.findParam('hw_leak').hide()
+
         AttackKeeloqParameters.__init__(self, hasHardwareModel=False, hasMultipleRuns=False)
         self.setAnalysisAlgorithm(self.findParam('attack_algo').getValue(), None, None)
 #        self.updateBytesVisible()
