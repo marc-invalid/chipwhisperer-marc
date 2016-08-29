@@ -701,6 +701,8 @@ class PartitionDisplay(Parameterized, AutoScript):
         if tRange[1] < 0:
             tRange = (tRange[0], traces.numTraces() + 1 + tRange[1])
 
+        print "generatePartitionStats() tRange=%d,%d" % (tRange[0], tRange[1])
+
         if partitionData["partdata"] is not None:
             self.numKeys  = len(partitionData["partdata"])
             numPartitions = len(partitionData["partdata"][0])
