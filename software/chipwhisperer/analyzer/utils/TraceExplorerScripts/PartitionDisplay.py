@@ -74,8 +74,9 @@ class DifferenceModeTTest(object):
 
                     if means[bnum][i] is not None and means[bnum][j] is not None:
 
-                        ttest = np.subtract(means[bnum][i], means[bnum][j])
-                        ttest /= np.sqrt((var[bnum][i]/num[bnum][i]) + (var[bnum][j]/num[bnum][j]))
+                        with np.errstate(divide='ignore', invalid='ignore'):
+                            ttest = np.subtract(means[bnum][i], means[bnum][j])
+                            ttest /= np.sqrt((var[bnum][i]/num[bnum][i]) + (var[bnum][j]/num[bnum][j]))
 
                         # Working with unexpected input can lead to NaN (not a number) or +-inf.  Example: 1.0/0 = inf
                         # Allowing inf leads to "number out of range" exceptions during graph display.
