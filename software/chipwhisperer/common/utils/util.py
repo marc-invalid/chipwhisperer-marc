@@ -56,6 +56,8 @@ def dictSort(dictIn):
 
     except ImportError:
         pass
+    except AttributeError:
+        pass
     return dictIn
 
 
