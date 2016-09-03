@@ -27,19 +27,34 @@ from chipwhisperer.analyzer.utils.TraceExplorerScripts.PartitionDisplay import D
 from chipwhisperer.common.api.CWCoreAPI import CWCoreAPI
 
 
+# TODO: Automatic round timing.  While we detect the peaks, we also know where they are.  They
+#       should fall within certain limits in automatic mode.  The initial phase when no previous
+#       peaks are available for orientation, we could run either "open" (accepting peaks anywhere
+#       as long as they precede the start point) or "seeded" (checking where the known ciphertext
+#       bits produce peaks).  All this should be an option, so that fabricated inputs that are
+#       not actual capture traces can be processed as well.
 
+# TODO: Quality score and rewind.  One erroneous decision spoils the whole result.  It makes
+#       sense to judge the quality of a decision and its opposite, and keep near-tie ones or
+#       other suspect choices on a watchlist.  If scores stats lower, or the end result is
+#       not satisfying, we can go back to the watchlist and explore the opposite variants.
+
+
+#--- Attack class
 
 class KeeloqDPAEncoderBit(Parameterized, AutoScript, Plugin):
     """
     DPA attack using bit-model, working each of the encoder output bits separately
     """
-    _name = "Hardware Encoder: bit-model"
+    _name = "Encoder: Bit model"
 
     def __init__(self, targetModel, leakageFunction):
         AutoScript.__init__(self)
 
         self.getParams().addChildren([
-            {'name': '', 'type': 'label', 'value':"Demo: cipherSUM round528=301 width=3", 'readonly': True},
+            {'name': '', 'type': 'label', 'value':\
+                                                  "Attacks encoder MSB individually in rounds 496..432.\n"\
+                                                  "Demo: cipherSUM round528=301 width=3", 'readonly': True},
             {'name':'Utilize round timing', 'key':'roundtiming', 'type':'bool', 'value':False, 'action':self.updateScript,
                          'help': "Utilize round timing:\n"\
                                  "---------------------\n\n"\
@@ -148,8 +163,11 @@ class KeeloqDPAEncoderBit(Parameterized, AutoScript, Plugin):
                                          saveFile=False, loadFile=False, tRange=tracerange)
 
                 guessDiffs.append(partDiffs[0])
+# TODO: since we calculate 0 and 1 anyway we should call the partition mode just once and use a mode that produces 2 keys (0,1)
 
             #--- Determine range in which high correlation is expected
+
+            # TODO: for strict round timing, it is faster to do partStats only for the desired pointRange
 
             if roundwidth <= 0: # look in whole pointRange
                 lookStart = 0
