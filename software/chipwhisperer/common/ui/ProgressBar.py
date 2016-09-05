@@ -71,10 +71,15 @@ class ProgressBarText(object):
         self.statusMask = statusTextMask
         self.textValues = textValues
 
-    def getStatusText(self):
+    def getStatusText(self, singleLine=True):
         if self.textValues and not self.wasAborted():
-            return self.statusMask % self.textValues
-        return self.statusMask
+            text = self.statusMask % self.textValues
+        else:
+            text = self.statusMask
+        if singleLine == True:
+            # convert all whitespace/linefeeds to single spaces
+            text = " ".join(text.split())
+        return text
 
     def printStatus(self):
         if self.maximum!=0:
@@ -163,11 +168,11 @@ try:
         def abort(self, message = None):
             ProgressBarText.abort(self, message)
             if message:
-                QMessageBox.warning(self, "Warning", "Could not complete the execution:\n\n" + self.getStatusText())
+                QMessageBox.warning(self, "Warning", "Could not complete the execution:\n\n" + self.getStatusText(singleLine=False))
 
         def updateStatus(self, currentProgress, textValues=None):
             ProgressBarText.updateStatus(self, currentProgress, textValues)
-            self.statusLabel.setText(self.getStatusText())
+            self.statusLabel.setText(self.getStatusText(singleLine=False))
             if self.maximum!=0:
                 self.pbar.setValue((self.currentProgress/self.maximum) * 100)
             util.updateUI()
