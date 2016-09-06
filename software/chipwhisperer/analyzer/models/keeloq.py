@@ -92,12 +92,29 @@ def keeloqDecryptKeystream(data, keystream=None, round=528):
     round -= len(keystream)
     return data, round
 
+
+#--- KEELOQ: Convert keystream to a HEX value with 'X' for patially known nibbles and '.' for empty nibbles
+#
+#    Example PartialToHex:    "011100010",4 -> "71X."
+#    Example FormatKeystream: "011100010"   -> "............71X."
+
+def keeloqPartialToHex(partial, digits):
+    trimmed    = min(digits*4, len(partial))
+    complete   = trimmed / 4
+    incomplete = trimmed % 4
+    main  = ("%x" % int(partial[:(complete*4)], 2)) if complete else ""
+    tail  = "X" if incomplete else ""
+    empty = digits - len(main) - len(tail)
+    return "%s%s%s" % (main, tail, '.' * empty)
+
+def keeloqFormatKeystream(keystream):
+    str = keeloqPartialToHex(keystream, 16)
+    return "%s%s" % (str[4:], str[:4])
+
+
 #--- KEELOQ: Test
 
 def test():
-    #Manual tests right now - need to automate this.
-
-    ##### AES-128 Tests
     print "**********KEELOQ  Tests***************"
     print "TODO"
 
