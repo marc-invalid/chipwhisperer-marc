@@ -20,6 +20,8 @@ from chipwhisperer.analyzer.models.keeloq import keeloqGetHD
 
 from chipwhisperer.common.api.CWCoreAPI import CWCoreAPI
 
+# TODO: rename functions according to attacks: bit / hd
+
 
 #------ Helper for parsing partConfig into partMethod object
 
