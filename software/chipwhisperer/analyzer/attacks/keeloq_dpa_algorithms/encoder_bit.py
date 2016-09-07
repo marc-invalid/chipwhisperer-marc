@@ -17,6 +17,7 @@ from chipwhisperer.common.utils.parameter import Parameterized, Parameter
 
 from chipwhisperer.analyzer.partition.keeloq import keeloqPartition_CiphertextMSB
 from chipwhisperer.analyzer.models.keeloq import keeloqDecrypt
+from chipwhisperer.analyzer.models.keeloq import keeloqFormatKeystream
 
 # TODO: The following two imports are made to avoid duplicating code.  However, those classes are
 #       designed to work in the GUI environment.  Consider separating function from presentation.
@@ -50,6 +51,7 @@ class KeeloqDPAEncoderBit(Parameterized, AutoScript, Plugin):
 
     def __init__(self, targetModel, leakageFunction):
         AutoScript.__init__(self)
+        self.config = {}
 
         self.getParams().addChildren([
             {'name': '', 'type': 'label', 'value':\
@@ -77,11 +79,9 @@ class KeeloqDPAEncoderBit(Parameterized, AutoScript, Plugin):
         self.updateScript()
 
     def updateScript(self, ignored=None):
-        self.addFunction('init', 'setEnforceRoundTiming', '%s' % self.findParam('roundtiming').getValue())
-
-        #self.addFunction('init', 'setReportingInterval', '%d' % self.findParam('reportinterval').getValue())
-        #self.addFunction('init', 'setReportingInterval', '%d' % self.findParam('reportinterval').getValue())
-        pass
+        self.addFunction('init', 'setAlgorithmConfig', "config={'roundtiming':%s}" % (
+                                      self.findParam('roundtiming').getValue()
+                                  ))
 
     def setTargetBytes(self, brange):
         self.brange = brange
@@ -89,8 +89,11 @@ class KeeloqDPAEncoderBit(Parameterized, AutoScript, Plugin):
     def setReportingInterval(self, ri):
         self._reportingInterval = ri
 
-    def setEnforceRoundTiming(self, roundtiming=False):
-        self.roundtiming = roundtiming
+    def setAlgorithmConfig(self, config={}, update=False):
+        if update:
+            self.config.update(config) 
+        else:
+            self.config = config
 
 
     #--- this is the main processing loop
@@ -109,7 +112,7 @@ class KeeloqDPAEncoderBit(Parameterized, AutoScript, Plugin):
             roundwidth = attack.keeloq_roundwidth
             # print "Using KEELOQ timing values from attack: %d %d" % (round528, roundwidth)
 
-        if self.roundtiming != True:
+        if self.config['roundtiming'] != True:
             roundwidth = 0
 
         #--- prepare environment
@@ -218,7 +221,7 @@ class KeeloqDPAEncoderBit(Parameterized, AutoScript, Plugin):
 
             if progressBar:
                 progressBar.setText("Attacking key bits (%d of 64)" % bit)
-                progressBar.setStatusMask("Keystream: %s" % keystream)
+                progressBar.setStatusMask("key=%s\nkeystream=%s" % (keeloqFormatKeystream(keystream), keystream))
                 progressBar.updateStatus(bit)
                 if progressBar.wasAborted():
                     print "Aborting. Result so far: %s" % keystream
