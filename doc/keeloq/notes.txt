@@ -1,0 +1,18 @@
+
+Markdown cheatsheet:
+
+	https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
+
+Install tools:
+
+	apt-get install retext python3-docutils python3-markdown docutils-common markdown
+
+Edit:
+
+	retext keeloq.md
+
+Convert to HTML:
+
+	markdown keeloq.md > keeloq.html ; firefox keeloq.html  &
+
+
