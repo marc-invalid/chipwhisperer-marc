@@ -32,10 +32,10 @@ class Keeloq_DPA(AttackBaseClass, AttackKeeloqParameters):
             {'name':'Attack Algorithm',       'key':'attack_algo', 'type':'list', 'values':algos, 'value':algos[algos.keys()[0]], 'action':self.updateAlgorithm},
             {'name':'Leakage Model',          'key':'hw_leak', 'type':'list', 'values':models_keeloq.leakagemodels, 'value':"LEAK_HW_CIPHERTEXT_BIT", 'action':self.updateScript},
 
-            {'name':'Trace Setup', 'key':'tracesetup', 'type':'group'},
-            {'name':'Point Setup', 'key':'pointsetup', 'type':'group'},
+            {'name':'Trace Setup', 'key':'tracesetup', 'type':'group'},   # FIXME: "attack runs" makes no sense for our use
+            {'name':'Point Setup', 'key':'pointsetup', 'type':'group'},   # TODO: redundant when round timing is known
 
-            {'name':'Timing Setup (optional)', 'key':'keeloq_timing', 'type':'group', 'children':[
+            {'name':'Timing Setup (optional for some uses)', 'key':'keeloq_timing', 'type':'group', 'children':[
                 # {'name': '', 'type': 'label', 'value':"Position of rounds within traces", 'readonly': True},
                 {'name':'Round 528 (pos)',     'key':'round528',   'type':'int', 'value':301, 'default':301, 'action':self.updateScript},
                 {'name':'Round width (samples)',    'key':'roundwidth',     'type':'int', 'value':3,   'default':3,   'action':self.updateScript},

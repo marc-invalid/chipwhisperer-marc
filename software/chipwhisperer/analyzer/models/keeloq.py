@@ -102,7 +102,8 @@ def keeloqPartialToHex(partial, digits):
     trimmed    = min(digits*4, len(partial))
     complete   = trimmed / 4
     incomplete = trimmed % 4
-    main  = ("%x" % int(partial[:(complete*4)], 2)) if complete else ""
+    fmt   = "%%0%dx" % complete
+    main  = (fmt % int(partial[:(complete*4)], 2)) if complete else ""
     tail  = "X" if incomplete else ""
     empty = digits - len(main) - len(tail)
     return "%s%s%s" % (main, tail, '.' * empty)
@@ -110,6 +111,27 @@ def keeloqPartialToHex(partial, digits):
 def keeloqFormatKeystream(keystream):
     str = keeloqPartialToHex(keystream, 16)
     return "%s%s" % (str[4:], str[:4])
+
+
+#--- KEELOQ: Check if keystream is equal to (or partial of) knownkey.
+#
+#    Useful to highlight keystreams when correct key is known.
+#    knownkey can be either an int, or a keystream too (max 64 bits)
+#    keystream can be longer than 64 bits, and all will be checked correctly
+
+def keeloqIsCorrect(keystream, knownkey):
+    if type(knownkey) is not str:
+        fmt = format(knownkey, '064b')
+        knownkey = fmt[-16:] + fmt[:-16]
+
+    while (len(keystream) > 0):
+        trim1 = min(len(keystream), 64)
+        trim2 = min(len(keystream), len(knownkey))
+        if keystream[:trim1] != knownkey[:trim2]:
+            return False
+        keystream = keystream[trim1:]
+
+    return True
 
 
 #--- KEELOQ: Test
