@@ -1,0 +1,5 @@
+#!/bin/bash
+
+markdown keeloq.md > keeloq.html
+markdown keeloq_algorithm/keeloq_algorithm.md > keeloq_algorithm/keeloq_algorithm.html
+

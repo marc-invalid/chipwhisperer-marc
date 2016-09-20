@@ -1,15 +1,18 @@
 
-# Keeloq for ChipWhisperer
+Keeloq for ChipWhisperer
+========================
 
-This is a set of tools to perform power analysis of the Keeloq cipher.
-It is based on and integrated with the ChipWhisperer software.  Tutorials
-and example traces are provided for a quick learning experience.
+This is a set of tools to perform power analysis of the Keeloq cipher.  It
+is based on and integrated with the [ChipWhisperer](https://wiki.newae.com/)
+software.  Tutorials and example traces are provided for a quick learning
+experience.
 
 Implementation and documentation copyright 2016 by Marc.
+_________________________________________________________________________
 
-___
 
-## Toolset overview
+Toolset overview
+----------------
 
 ### Keeloq data capture
 
@@ -49,9 +52,68 @@ Container for several automatted attacks:
   - **Encoder HD model**:  Attacks the status register Hamming distance
                            during shift operations.
 
-___
+_________________________________________________________________________
 
-## Example traces
+
+Tutorial overview
+-----------------
+
+### [The Keeloq algorithm](keeloq_algorithm/keeloq_algorithm.html)
+
+Rehash of public information about Keeloq.
+
+  - Algorithm description
+  - Implementations
+  - Crypto analysis
+  - Source code
+
+
+### Capture power consumption of HCS301
+
+> **### TODO ###**: Not finished yet
+
+  - Prepare victim (GND shunt)
+  - Connect CW1002 and differential probe
+  - Configure CW Capture software
+  - Find suitable triggers
+
+
+### Capture ciphertext of HCS301 with GNU Radio
+
+> **### TODO ###**: Not finished yet
+
+  - Configure GNU Radio live-boot environment
+  - Prepare reception of RF messages
+  - Perform capture of power and RF data simultaneously
+  - Annotate ciphertext data to power traces
+
+
+### Preparation of traces
+
+> **### TODO ###**: Not finished yet
+
+  - Compensate for clock drift and eliminate freaks
+  - Recover Keeloq round timing
+  - Identify and extract interesting point ranges
+  - Compress to peaks
+  - Export polished results
+
+
+### Bit model attack on Keeloq
+
+> **### TODO ###**: Not finished yet
+
+
+### Hamming distance model attack on Keeloq
+
+> **### TODO ###**: Not finished yet
+
+
+_______________________________________________________________________
+
+
+Example traces
+--------------
 
 ### HCS301 raw
 
@@ -93,56 +155,16 @@ status register leaks.
   - **### FIXME ###** samples per cipher round
   - Cover last 100 rounds (approx)
 
-___
+_____________________________________________________________________
 
-## Tutorial overview
 
-### The Keeloq algorithm
-
-Rehash of available information about the Keeloq algorithm.
-
-  - Algorithm description
-  - Source code
-  - Existing implementations
-
-### Capture power consumption of HCS301
-
-  - Prepare victim (GND shunt)
-  - Connect CW1002 and differential probe
-  - Configure CW Capture software
-  - Find suitable triggers
-
-### Capture ciphertext of HCS301 with GNU Radio
-
-  - Configure GNU Radio live-boot environment
-  - Prepare reception of RF messages
-  - Perform capture of power and RF data simultaneously
-  - Annotate ciphertext data to power traces
-
-### Preparation of traces
-
-  - Compensate for clock drift and eliminate freaks
-  - Recover Keeloq round timing
-  - Identify and extract interesting point ranges
-  - Compress to peaks
-  - Export polished results
-
-### Bit model attack on Keeloq
-
-  **### TODO ###**
-
-### Hamming distance model attack on Keeloq
-
-  **### TODO ###**
-
-___
-
-# Thanks
+Thanks
+------
 
 Thanks to *Colin O'Flynn* for making ChipWhisperer open-source.  This
 extension would not exist otherwise.  Also, because of it, I learned
 python, git, and markdown.  Thanks for that!
 
-___
+______________________________________________________________________
 
-_Document version: 08-Sep-2016_
+_Document version: 20-Sep-2016_

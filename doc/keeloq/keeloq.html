@@ -1,8 +1,9 @@
 <h1>Keeloq for ChipWhisperer</h1>
 
-<p>This is a set of tools to perform power analysis of the Keeloq cipher.
-It is based on and integrated with the ChipWhisperer software.  Tutorials
-and example traces are provided for a quick learning experience.</p>
+<p>This is a set of tools to perform power analysis of the Keeloq cipher.  It
+is based on and integrated with the <a href="https://wiki.newae.com/">ChipWhisperer</a>
+software.  Tutorials and example traces are provided for a quick learning
+experience.</p>
 
 <p>Implementation and documentation copyright 2016 by Marc.</p>
 
@@ -55,6 +56,73 @@ exploration, understanding the attacks, and even executing them manually.</p>
 
 <hr />
 
+<h2>Tutorial overview</h2>
+
+<h3><a href="keeloq_algorithm/keeloq_algorithm.html">The Keeloq algorithm</a></h3>
+
+<p>Rehash of public information about Keeloq.</p>
+
+<ul>
+<li>Algorithm description</li>
+<li>Implementations</li>
+<li>Crypto analysis</li>
+<li>Source code</li>
+</ul>
+
+<h3>Capture power consumption of HCS301</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<ul>
+<li>Prepare victim (GND shunt)</li>
+<li>Connect CW1002 and differential probe</li>
+<li>Configure CW Capture software</li>
+<li>Find suitable triggers</li>
+</ul>
+
+<h3>Capture ciphertext of HCS301 with GNU Radio</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<ul>
+<li>Configure GNU Radio live-boot environment</li>
+<li>Prepare reception of RF messages</li>
+<li>Perform capture of power and RF data simultaneously</li>
+<li>Annotate ciphertext data to power traces</li>
+</ul>
+
+<h3>Preparation of traces</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<ul>
+<li>Compensate for clock drift and eliminate freaks</li>
+<li>Recover Keeloq round timing</li>
+<li>Identify and extract interesting point ranges</li>
+<li>Compress to peaks</li>
+<li>Export polished results</li>
+</ul>
+
+<h3>Bit model attack on Keeloq</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<h3>Hamming distance model attack on Keeloq</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<hr />
+
 <h2>Example traces</h2>
 
 <h3>HCS301 raw</h3>
@@ -104,57 +172,7 @@ status register leaks.</p>
 
 <hr />
 
-<h2>Tutorial overview</h2>
-
-<h3>The Keeloq algorithm</h3>
-
-<p>Rehash of available information about the Keeloq algorithm.</p>
-
-<ul>
-<li>Algorithm description</li>
-<li>Source code</li>
-<li>Existing implementations</li>
-</ul>
-
-<h3>Capture power consumption of HCS301</h3>
-
-<ul>
-<li>Prepare victim (GND shunt)</li>
-<li>Connect CW1002 and differential probe</li>
-<li>Configure CW Capture software</li>
-<li>Find suitable triggers</li>
-</ul>
-
-<h3>Capture ciphertext of HCS301 with GNU Radio</h3>
-
-<ul>
-<li>Configure GNU Radio live-boot environment</li>
-<li>Prepare reception of RF messages</li>
-<li>Perform capture of power and RF data simultaneously</li>
-<li>Annotate ciphertext data to power traces</li>
-</ul>
-
-<h3>Preparation of traces</h3>
-
-<ul>
-<li>Compensate for clock drift and eliminate freaks</li>
-<li>Recover Keeloq round timing</li>
-<li>Identify and extract interesting point ranges</li>
-<li>Compress to peaks</li>
-<li>Export polished results</li>
-</ul>
-
-<h3>Bit model attack on Keeloq</h3>
-
-<p><strong>### TODO ###</strong></p>
-
-<h3>Hamming distance model attack on Keeloq</h3>
-
-<p><strong>### TODO ###</strong></p>
-
-<hr />
-
-<h1>Thanks</h1>
+<h2>Thanks</h2>
 
 <p>Thanks to <em>Colin O'Flynn</em> for making ChipWhisperer open-source.  This
 extension would not exist otherwise.  Also, because of it, I learned
@@ -162,4 +180,4 @@ python, git, and markdown.  Thanks for that!</p>
 
 <hr />
 
-<p><em>Document version: 08-Sep-2016</em></p>
+<p><em>Document version: 20-Sep-2016</em></p>

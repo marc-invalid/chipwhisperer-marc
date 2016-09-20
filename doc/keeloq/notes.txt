@@ -16,4 +16,9 @@ Convert to HTML:
 
 	markdown keeloq.md > keeloq.html ; firefox keeloq.html  &
 
+Pictures:
+
+	1920x1080	-> 768x432	(2.50 = 40%)
+	1024x768	-> 768x576	(1.33 = 75%)
+
 
