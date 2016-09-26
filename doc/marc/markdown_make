@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#--- README
+#
+#    The readme is placed in the root directory, because GITHUB wants it so.
+#    We place our HTML version here, adjusting any relative links to match.
+#    A duplicate of the .md itself here would cause confusion about where
+#    to edit.
+
+cat ../../README.md | sed -e "s/(doc\/marc\//(/" | markdown > readme.html
+
+#--- All other files
+#
+#    TODO: make this automatic
+
+markdown keeloq/keeloq.md                            > keeloq/keeloq.html
+markdown keeloq/keeloq_algorithm/keeloq_algorithm.md > keeloq/keeloq_algorithm/keeloq_algorithm.html
+

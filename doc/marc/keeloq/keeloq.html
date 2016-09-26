@@ -1,0 +1,196 @@
+<p><meta charset="UTF-8"></p>
+
+<h1>Keeloq for ChipWhisperer</h1>
+
+<p>This is a set of tools to perform power analysis of the Keeloq cipher.  It
+is based on and integrated with the <a href="https://wiki.newae.com/">ChipWhisperer</a>
+software.  Tutorials and example traces are provided for a quick learning
+experience.</p>
+
+<p>Implementation and documentation copyright 2016 by Marc.</p>
+
+<hr />
+
+<h2>Toolset overview</h2>
+
+<h3>Keeloq data capture</h3>
+
+<p>Loose collection of utilities to capture Keeloq data transmissions and
+annotate them to the power traces.</p>
+
+<ul>
+<li>GNURadio flow to receive and demodulate RF messages</li>
+<li>Keeloq OOK decoder to convert baseband to HEX values</li>
+<li>Script to annotate HEX values to traces captured with ChipWhisperer</li>
+</ul>
+
+<h3>Preprocessing filter: Resync Slice-to-Slot</h3>
+
+<p>Powerful plugin to prepare traces for analysis.</p>
+
+<ul>
+<li>Compensate for internal RC oscillator drift (HCSxxx)</li>
+<li>Extract arbitrary point ranges from each round</li>
+<li>Compress ranges to one peak per round</li>
+</ul>
+
+<h3>Trace Explorer partition modes: Keeloq (various)</h3>
+
+<p>Several partition modes relevant to the Keeloq algorithm.  Useful for visual
+exploration, understanding the attacks, and even executing them manually.</p>
+
+<ul>
+<li><strong>Bit (various)</strong>: Partition by ciphertext output or intermediate
+                   LSB/MSB value</li>
+<li><strong>HD (various)</strong>:  Partition by Hamming distance of status register
+                   during shift operations</li>
+</ul>
+
+<h3>Attack module: Keeloq DPA</h3>
+
+<p>Container for several automatted attacks:</p>
+
+<ul>
+<li><strong>Encoder Bit model</strong>: Attacks the intermediate MSB bit value.</li>
+<li><strong>Encoder HD model</strong>:  Attacks the status register Hamming distance
+                       during shift operations.</li>
+</ul>
+
+<hr />
+
+<h2>Tutorial overview</h2>
+
+<h3><a href="keeloq_algorithm/keeloq_algorithm.html">The Keeloq algorithm</a></h3>
+
+<p>Rehash of public information about Keeloq.</p>
+
+<ul>
+<li>Algorithm description</li>
+<li>Implementations</li>
+<li>Crypto analysis</li>
+<li>Source code</li>
+</ul>
+
+<h3>Capture power consumption of HCS301</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<ul>
+<li>Prepare victim (GND shunt)</li>
+<li>Connect CW1002 and differential probe</li>
+<li>Configure CW Capture software</li>
+<li>Find suitable triggers</li>
+</ul>
+
+<h3>Capture ciphertext of HCS301 with GNU Radio</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<ul>
+<li>Configure GNU Radio live-boot environment</li>
+<li>Prepare reception of RF messages</li>
+<li>Perform capture of power and RF data simultaneously</li>
+<li>Annotate ciphertext data to power traces</li>
+</ul>
+
+<h3>Preparation of traces</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<ul>
+<li>Compensate for clock drift and eliminate freaks</li>
+<li>Recover Keeloq round timing</li>
+<li>Identify and extract interesting point ranges</li>
+<li>Compress to peaks</li>
+<li>Export polished results</li>
+</ul>
+
+<h3>Bit model attack on Keeloq</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<h3>Hamming distance model attack on Keeloq</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong>: Not finished yet</p>
+</blockquote>
+
+<hr />
+
+<h2>Example traces</h2>
+
+<p>To complement the tutorials, the following example projects are provided.</p>
+
+<h3>HCS301 raw</h3>
+
+<p>Useful to study trace preparation.  Contains synchronization issues
+(RC oscillator clock drift).</p>
+
+<blockquote>
+  <p><strong>### TODO ###</strong></p>
+</blockquote>
+
+<ul>
+<li>> 500 semi-consecutive¹ messages</li>
+<li>48.2 MHz sample rate (approx 200 samples per cipher round)</li>
+<li>Covers last 100 rounds (approx)</li>
+<li>Captured with ChipWhisperer CW1002 hardware kit</li>
+<li>Ciphertext annotated</li>
+</ul>
+
+<h3><a href="examples/HCS301_sync.zip">HCS301 sync</a></h3>
+
+<p>Derived from <strong>HCS301 raw</strong>, with clock drift compensated and freaks
+removed.  Useful to study any aspect of the power behavior.</p>
+
+<ul>
+<li>501 semi-consecutive¹ messages</li>
+<li>200 samples per cipher round</li>
+<li><strong>### FIXME ###</strong> rounds covered</li>
+</ul>
+
+<h3>HCS301 bits (<a href="examples/HCS301_bits_full.zip">full</a> / <a href="examples/HCS301_bits_peak.zip">peak</a>)</h3>
+
+<p>Derived from <strong>HCS301 sync</strong>, trimmed to just the point range where
+MSB/LSB bit values leak.  Useful to study bit model attacks.</p>
+
+<ul>
+<li>Samples per cipher round: 40 (full) or 3 (peak)</li>
+<li>Each round is zero-padded for visual guidance</li>
+</ul>
+
+<h3>HCS301 shift (full / peak)</h3>
+
+<blockquote>
+  <p><strong>### TODO ###</strong></p>
+</blockquote>
+
+<p>Derived from <strong>HCS301 sync</strong>, trimmed to just the point range where the
+status register leaks.  Useful to study Hamming distance attacks.</p>
+
+<ul>
+<li><strong>### FIXME ###</strong> samples per cipher round</li>
+</ul>
+
+<h3>Notes:</h3>
+
+<p>¹ semi-consecutive:</p>
+
+<blockquote>
+  <p>Only every other generated message was captured, and some of them
+    were discarded afterwards.  All messages are from the same device,
+    the internal counter is increasing, the step size is small, but it
+    is not 1.</p>
+</blockquote>
+
+<hr />
+
+<p><em>Document version: 25-Sep-2016</em></p>

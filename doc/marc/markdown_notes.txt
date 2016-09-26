@@ -1,0 +1,34 @@
+
+Markdown cheatsheet:
+
+	https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
+	http://daringfireball.net/projects/markdown/syntax
+
+Install tools:
+
+	apt-get install retext python3-docutils python3-markdown docutils-common markdown
+
+Edit:
+
+	retext keeloq.md
+
+Convert to HTML:
+
+	markdown keeloq.md > keeloq.html ; firefox keeloq.html  &
+
+Pictures:
+
+	1920x1080	-> 768x432	(2.50 = 40%)
+	1024x768	-> 768x576	(1.33 = 75%)
+
+Footnotes:
+
+	Superscript 1,2,3 in UTF-8 use special encodings, which must be declared
+	in HTML if the result is to be displayed correctly.  We can do that by
+	using one of these lines at the top of the document:
+
+		<meta charset="UTF-8">
+
+		<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+
+

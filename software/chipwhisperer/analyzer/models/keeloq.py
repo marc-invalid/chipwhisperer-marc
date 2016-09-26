@@ -40,6 +40,10 @@ def keeloqGetHD(var1, var2):
 def keeloqNLF(a, b, c, d, e):
     return (d + e + a*c + a*e + b*c + b*e + c*d + d*e + a*d*e + a*c*e + a*b*d + a*b*c) % 2;
 
+# FIXME: Total operation is very slow, maybe because of this function.
+#        Should replace * with & or with a lookup table.
+
+
 #---- KEELOQ: Calc next bit from current state
 
 def keeloqEncryptCalcMSB(data, keybit):
