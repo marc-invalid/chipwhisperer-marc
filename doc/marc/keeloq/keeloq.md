@@ -152,14 +152,15 @@ MSB/LSB bit values leak.  Useful to study bit model attacks.
   - Each round is zero-padded for visual guidance
 
 
-### HCS301 shift (full / peak)
-
-> **### TODO ###**
+### HCS301 shift (full / [peak](examples/HCS301_shift_peak.zip))
 
 Derived from **HCS301 sync**, trimmed to just the point range where the
 status register leaks.  Useful to study Hamming distance attacks.
 
-  - **### FIXME ###** samples per cipher round
+  - Samples per cipher round: **### FIXME ###** (full) or 3 (peak)
+  - Each round is zero-padded for visual guidance
+
+> **### TODO ###**: full variant
 
 
 ### Notes:
