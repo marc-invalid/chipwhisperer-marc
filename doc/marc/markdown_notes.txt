@@ -21,6 +21,10 @@ Pictures:
 	1920x1080	-> 768x432	(2.50 = 40%)
 	1024x768	-> 768x576	(1.33 = 75%)
 
+  -> 161010:
+
+	1440x900	-> 832x520	(1.73 = 58%)	with -filter cubic / -unsharp 1x0.5
+
 Footnotes:
 
 	Superscript 1,2,3 in UTF-8 use special encodings, which must be declared
