@@ -4,9 +4,10 @@
 chipwhisperer-marc
 ==================
 
-This is my version of ChipWhisperer (git://git.assembla.com/chipwhisperer.git)
+This is my version of ChipWhisperer (git://git.assembla.com/chipwhisperer.git).
 
-You're looking at the first drop of several, please be patient
+
+You're looking at the second drop of several, please be patient
 and give me some time for cleaning up.
 
 
@@ -27,6 +28,14 @@ Additional functionality:
 
 The intention is to stay near the original code base, making all
 changes in the least invasive way possible.
+
+
+Documentation
+-------------
+
+  - Fork home: [github.com/marc-invalid/chipwhisperer-marc](https://github.com/marc-invalid/chipwhisperer-marc)
+  - **(FIXME)** original ChipWhisperer documentation
+  - [Install on Linux Mint 18](doc/marc/install_mint18/install_mint18.md)
 
 
 Why a fork?

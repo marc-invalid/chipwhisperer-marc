@@ -1,0 +1,86 @@
+<h1>Install chipwhisperer-marc on Linux Mint 18</h1>
+
+<p>This tutorial has been tested with a fresh Linux Mint 18 system in VMWare
+(4GB RAM, 20GB disk).</p>
+
+<h2>Step 1: Install dependencies</h2>
+
+<p>Open a root shell (<code>sudo su -</code>) and execute:</p>
+
+<blockquote>
+  <p>apt-get update <br />
+  apt-get install git git-doc gcc build-essential python2.7 python2.7-dev
+                    libpython2.7 python-numpy python-scipy python-pyside
+                    python-configobj python-setuptools python-pip libpng12-dev
+                    libfreetype6-dev liblapack-dev gfortran   </p>
+
+<p>pip install --upgrade pip pyqtgraph docutils matplotlib numpy scipy <br />
+  pip install pyusb --pre  </p>
+</blockquote>
+
+<h2>Step 2: Install chipwhisperer-marc</h2>
+
+<p>In a user shell (not root), execute:</p>
+
+<blockquote>
+  <p>cd ~/ <br />
+  git clone https://github.com/marc-invalid/chipwhisperer-marc.git <br />
+  cd chipwhisperer-marc <br />
+  git clone git://git.assembla.com/openadc.git  </p>
+
+<p>cd software <br />
+  sudo python2.7 setup.py develop ; echo $? <br />
+  cd ../openadc/controlsw/python <br />
+  sudo python2.7 setup.py develop ; echo $? <br />
+  cd ../../..  </p>
+</blockquote>
+
+<h2>Step 3: Allow user access to CW1002 USB hardware (optional)</h2>
+
+<p>As root, execute:</p>
+
+<blockquote>
+  <p>vi /etc/udev/rules.d/99-ztex.rules  </p>
+
+<blockquote>
+  <p># MARC: ChipWhisperer: allow users to claim the device <br />
+ SUBSYSTEM=="usb", ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="8613", MODE="0664", GROUP="plugdev" <br />
+ SUBSYSTEM=="usb", ATTRS{idVendor}=="221a", ATTRS{idProduct}=="0100", MODE="0664", GROUP="plugdev"  </p>
+</blockquote>
+
+<p>vi /etc/udev/rules.d/99-avrisp.rules  </p>
+
+<blockquote>
+  <p># MARC: ChipWhisperer: allow users to claim the device <br />
+ SUBSYSTEM=="usb", ATTRS{idVendor}=="03eb", ATTRS{idProduct}=="2104", MODE="0664", GROUP="plugdev"  </p>
+</blockquote>
+
+<p>usermod -a -G plugdev marc   # <strong>(use YOUR username!)</strong> <br />
+  udevadm control --reload-rules  </p>
+
+<p></blockquote></p>
+
+<p>You have may have to logout of the current session for this to
+become active.</p>
+
+<p>Note about USB in VMWare: The guest window must be active while
+you plug the device in, otherwise it may be assigned to the host
+instead of the guest. Also, sometimes it doesn't work at the
+first attempt.</p>
+
+<h2>Step 4: Run the program</h2>
+
+<p>Run either of these, in a user shell:</p>
+
+<blockquote>
+  <p>cd ~/chipwhisperer-marc/software  </p>
+
+<p>python2.7 CWCapture.pyw <br />
+  python2.7 CWAnalyzer.pyw  </p>
+</blockquote>
+
+<p><img src="CWAnalyzer.png" alt="Screenshot of CWAnalyzer" title="" /></p>
+
+<hr />
+
+<p><em>Document author: marc</em> - <em>Document version: 11-Oct-2016</em> - <a href="../readme.html">Fork README</a></p>
