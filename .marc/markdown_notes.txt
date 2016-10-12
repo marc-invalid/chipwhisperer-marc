@@ -4,6 +4,13 @@ Markdown cheatsheet:
 	https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
 	http://daringfireball.net/projects/markdown/syntax
 
+Inline pictures by ref, centered:
+
+<center>![alt][ref]</center>
+<center>_desc_</center>
+[ref]: path/file.png
+
+
 Install tools:
 
 	apt-get install retext python3-docutils python3-markdown docutils-common markdown

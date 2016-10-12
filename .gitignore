@@ -22,3 +22,4 @@ default-data-dir/
 *.d
 *.lst
 *.npy
+.marc/ignore

@@ -1,5 +1,8 @@
 #!/bin/bash
 #
+# $1	--all		generate all files rather than only the changed ones
+#
+#
 # FIXME: for now, this script must be executed from the home path of the project.
 
 
@@ -13,12 +16,41 @@ MARCPATH="doc/marc"
 #    A duplicate of the .md itself here would cause confusion about where
 #    to edit.
 
-cat ${HOMEPATH}/README.md | sed -e "s/(doc\/marc\//(/" | markdown > ${MARCPATH}/readme.html
+for dummy in dummy ; do
+  FILENAME_MD="${HOMEPATH}/README.md"
+  FILENAME_HTML="${MARCPATH}/readme.html"
 
-#--- All other files
+  [ "$1" != "--all" ] && [ -f  "$FILENAME_HTML" ] && [ "$FILENAME_HTML" -nt "$FILENAME_MD" ] && continue
+
+  echo "Converting README"
+  cat "${FILENAME_MD}" | \
+    sed -e "s/(doc\/marc\//(/" | \
+    sed -e "s/\.md)/\.html)/" | \
+    markdown > "${FILENAME_HTML}"
+done
+
+#--- Convert all other markdown files
 #
-#    TODO: make this automatic
+#    TODO: add automatic discovery (with find or make)
 
-markdown ${MARCPATH}/keeloq/keeloq.md                            > ${MARCPATH}/keeloq/keeloq.html
-markdown ${MARCPATH}/keeloq/keeloq_algorithm/keeloq_algorithm.md > ${MARCPATH}/keeloq/keeloq_algorithm/keeloq_algorithm.html
+TUTORIALS="keeloq/keeloq \
+           keeloq/keeloq_algorithm/keeloq_algorithm \
+           keeloq/keeloq_capture_cw1002/keeloq_capture_cw1002 \
+           install_mint18/install_mint18 \
+          "
+
+for TUT in $TUTORIALS ; do
+  FILENAME_MD="${MARCPATH}/${TUT}.md"
+  FILENAME_HTML="${MARCPATH}/${TUT}.html"
+
+  # skip those that are already up-to-date
+  [ "$1" != "--all" ] && [ -f  "$FILENAME_HTML" ] && [ "$FILENAME_HTML" -nt "$FILENAME_MD" ] && continue
+
+  echo "Converting ${TUT}"
+  cat "${FILENAME_MD}" | \
+    sed -e "s/\.\.\/\.\.\/README\.md)/readme\.html)/" | \
+    sed -e "s/\.md)/\.html)/" | \
+    markdown > "${FILENAME_HTML}"
+done
+
 
