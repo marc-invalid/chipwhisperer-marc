@@ -1,0 +1,24 @@
+#!/bin/sh
+
+#
+# $1    --enable=receive-pack           Enable push by remote.  master must not be checked out for this to work.
+#
+# To receive a push, do the following:
+#
+#   git branch receive
+#   git checkout receive
+#   ./gitserve --enable=receive-pack
+#   git checkout master
+
+echo "Starting git daemon at current dir    !!! NO SECURITY !!!"
+echo "Another box can now use something like: git clone git://1.2.3.4/ projectname"
+echo "Press CTRL-C to exit"
+echo ""
+
+git daemon --reuseaddr --base-path=. --export-all --verbose $1
+
+# --reuseaddr           in case of canceling and restarting too early
+# --base-path           current dir, hopefully a good choice
+# --export-all          no marking of exported repos necessary
+# --verbose             make sure we can see who connects
+

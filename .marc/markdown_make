@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+# FIXME: for now, this script must be executed from the home path of the project.
+
+
+HOMEPATH="."
+MARCPATH="doc/marc"
+
+#--- README
+#
+#    The readme is placed in the root directory, because GITHUB wants it so.
+#    We place our HTML version here, adjusting any relative links to match.
+#    A duplicate of the .md itself here would cause confusion about where
+#    to edit.
+
+cat ${HOMEPATH}/README.md | sed -e "s/(doc\/marc\//(/" | markdown > ${MARCPATH}/readme.html
+
+#--- All other files
+#
+#    TODO: make this automatic
+
+markdown ${MARCPATH}/keeloq/keeloq.md                            > ${MARCPATH}/keeloq/keeloq.html
+markdown ${MARCPATH}/keeloq/keeloq_algorithm/keeloq_algorithm.md > ${MARCPATH}/keeloq/keeloq_algorithm/keeloq_algorithm.html
+
