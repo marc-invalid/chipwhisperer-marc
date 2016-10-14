@@ -22,12 +22,12 @@ The chip is the SOIC-8 variant.
   - 48.2 MHz sample rate (approx 200 samples per cipher round)
   - Contains synchronization issues (RC oscillator clock drift)
   - Covers last 100 rounds (approx)
-  - Ciphertext annotated
-  - Full RF messages included in a log file
+  - Ciphertext is annotated
+  - Full RF messages are included in a log file
 
-Download     [HCS301 raw](HCS301_raw.zip)
+Download     [HCS301 raw](HCS301_raw.zip):
 
-**TODO**: add screenshot
+![Waveform of HCS301 raw](HCS301_raw.png)
 
 _________________________________________________________________________
 
