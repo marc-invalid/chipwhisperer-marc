@@ -27,7 +27,7 @@ annotate them to power traces.
 
   - GNURadio flow to receive and demodulate RF messages
   - Keeloq OOK decoder to convert baseband to HEX values
-  - Script to annotate HEX values to traces captured with ChipWhisperer
+  - [Script to annotate HEX values](../hex_to_npy/hex_to_npy.py) to traces captured with ChipWhisperer
 
 
 ### Preprocessing filter: Resync Slice-to-Slot
