@@ -5,9 +5,16 @@
 #
 # FIXME: for now, this script must be executed from the home path of the project.
 
-
 HOMEPATH="."
 MARCPATH="doc/marc"
+
+# TODO: add automatic discovery (with find or make)
+TUTORIALS="keeloq/keeloq \
+           keeloq/keeloq_algorithm/keeloq_algorithm \
+           keeloq/keeloq_capture_cw1002/keeloq_capture_cw1002 \
+           keeloq/keeloq_examples_hcs301/keeloq_examples_hcs301 \
+           install_mint18/install_mint18 \
+          "
 
 #--- README
 #
@@ -30,14 +37,6 @@ for dummy in dummy ; do
 done
 
 #--- Convert all other markdown files
-#
-#    TODO: add automatic discovery (with find or make)
-
-TUTORIALS="keeloq/keeloq \
-           keeloq/keeloq_algorithm/keeloq_algorithm \
-           keeloq/keeloq_capture_cw1002/keeloq_capture_cw1002 \
-           install_mint18/install_mint18 \
-          "
 
 for TUT in $TUTORIALS ; do
   FILENAME_MD="${MARCPATH}/${TUT}.md"

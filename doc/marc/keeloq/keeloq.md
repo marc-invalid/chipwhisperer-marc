@@ -3,10 +3,15 @@
 Keeloq for ChipWhisperer
 ========================
 
-This is a set of tools to perform power analysis of the Keeloq cipher.  It
+This is a set of tools to study power analysis of the Keeloq cipher.  It
 is based on and integrated with the [ChipWhisperer](https://wiki.newae.com/)
-software.  Tutorials and example traces are provided for a quick learning
-experience.
+software.
+
+The Keeloq algorithm is very simple, yet omni-present in our current
+world, making it an easy target to learn power analysis with.
+
+Tutorials and example traces are provided for quick entry, even without
+having to buy any specialized hardware.
 
 Implementation and documentation copyright 2016 by Marc.
 _________________________________________________________________________
@@ -18,7 +23,7 @@ Toolset overview
 ### Keeloq data capture
 
 Loose collection of utilities to capture Keeloq data transmissions and
-annotate them to the power traces.
+annotate them to power traces.
 
   - GNURadio flow to receive and demodulate RF messages
   - Keeloq OOK decoder to convert baseband to HEX values
@@ -59,7 +64,7 @@ _________________________________________________________________________
 Tutorial overview
 -----------------
 
-### [The Keeloq algorithm](keeloq_algorithm/keeloq_algorithm.html)
+### [The Keeloq algorithm](keeloq_algorithm/keeloq_algorithm.md)
 
 Rehash of public information about Keeloq.
 
@@ -116,61 +121,11 @@ _______________________________________________________________________
 Example traces
 --------------
 
-To complement the tutorials, the following example projects are provided.
+The traces are provided to complement the tutorials, and to serve as
+starting point for further studies.
 
+  - [HCS301 encoder chip](keeloq_examples_hcs301/keeloq_examples_hcs301.md)
 
-### HCS301 raw
-
-Useful to study trace preparation.  Contains synchronization issues
-(RC oscillator clock drift).
-
-> **### TODO ###**
-
-  - \> 500 semi-consecutive¹ messages
-  - 48.2 MHz sample rate (approx 200 samples per cipher round)
-  - Covers last 100 rounds (approx)
-  - Captured with ChipWhisperer CW1002 hardware kit
-  - Ciphertext annotated
-
-
-### [HCS301 sync](examples/HCS301_sync.zip)
-
-Derived from **HCS301 raw**, with clock drift compensated and freaks
-removed.  Useful to study any aspect of the power behavior.
-
-  - 501 semi-consecutive¹ messages
-  - 200 samples per cipher round
-  - **### FIXME ###** rounds covered
-
-
-### HCS301 bits ([full](examples/HCS301_bits_full.zip) / [peak](examples/HCS301_bits_peak.zip))
-
-Derived from **HCS301 sync**, trimmed to just the point range where
-MSB/LSB bit values leak.  Useful to study bit model attacks.
-
-  - Samples per cipher round: 40 (full) or 3 (peak)
-  - Each round is zero-padded for visual guidance
-
-
-### HCS301 shift (full / [peak](examples/HCS301_shift_peak.zip))
-
-Derived from **HCS301 sync**, trimmed to just the point range where the
-status register leaks.  Useful to study Hamming distance attacks.
-
-  - Samples per cipher round: **### FIXME ###** (full) or 3 (peak)
-  - Each round is zero-padded for visual guidance
-
-> **### TODO ###**: full variant
-
-
-### Notes:
-
-¹ semi-consecutive:
-
-  > Only every other generated message was captured, and some of them
-    were discarded afterwards.  All messages are from the same device,
-    the internal counter is increasing, the step size is small, but it
-    is not 1.
 ______________________________________________________________________
 
-_Document version: 25-Sep-2016_
+_Document author: marc_ - _Document version: 25-Sep-2016_ - [Fork README](../../../README.md)

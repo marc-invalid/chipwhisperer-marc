@@ -138,4 +138,7 @@ Source code
 
 ______________________________________________________________________
 
-_Document version: 20-Sep-2016_
+_Document author: marc_ -
+_Document version: 20-Sep-2016_ -
+[Fork README](../../../../README.md) -
+[Keeloq README](../keeloq.md)

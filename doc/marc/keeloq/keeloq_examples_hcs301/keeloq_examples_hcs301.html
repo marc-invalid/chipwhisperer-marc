@@ -1,0 +1,119 @@
+<p><meta charset="UTF-8"></p>
+
+<h1>Keeloq example traces: HCS301</h1>
+
+<p>This collection of traces is part of the <a href="../keeloq.html">Keeloq toolset</a>
+and complements the tutorials.  It can also be used as starting point
+for new studies.</p>
+
+<hr />
+
+<h2>HCS301 raw</h2>
+
+<p>Useful to study trace preparation and synchronization.</p>
+
+<p>Captured with the ChipWhisperer CW1002 hardware kit using a GND shunt.
+The chip is the SOIC-8 variant.</p>
+
+<ul>
+<li>> 500 semi-consecutive¹ messages</li>
+<li>48.2 MHz sample rate (approx 200 samples per cipher round)</li>
+<li>Contains synchronization issues (RC oscillator clock drift)</li>
+<li>Ciphertext annotated</li>
+<li>Covers last 100 rounds (approx)</li>
+</ul>
+
+<p><strong>TODO</strong>: add file download</p>
+
+<hr />
+
+<h2>HCS301 sync</h2>
+
+<p>Useful to study any aspect of the power behavior.</p>
+
+<p>Derived from <strong>HCS301 raw</strong>, with clock drift compensated and freaks
+removed.</p>
+
+<ul>
+<li>501 semi-consecutive¹ messages</li>
+<li>200 samples per cipher round</li>
+</ul>
+
+<p><strong>TODO</strong>: specify how many rounds are covered</p>
+
+<p>Download     <a href="HCS301_sync.zip">HCS301 sync</a>:</p>
+
+<ul>
+<li>Round 528 (position) = 20000</li>
+<li>Round width (samples) = 200</li>
+</ul>
+
+<p><img src="HCS301_sync.png" alt="Waveform of HCS301 sync" title="" /></p>
+
+<hr />
+
+<h2>HCS301 bits (full / peak)</h2>
+
+<p>Useful to study bit model attacks.</p>
+
+<p>Derived from <strong>HCS301 sync</strong>, trimmed to just the point range where
+MSB/LSB bit values leak.  Each round is zero-padded for visual
+guidance.</p>
+
+<p>Download     <a href="HCS301_bits_full.zip">HCS301 bits full</a>:</p>
+
+<ul>
+<li>Round 528 (position) = 4000</li>
+<li>Round width (samples) = 40</li>
+</ul>
+
+<p><img src="HCS301_bits_full.png" alt="Waveform of HCS301 bits full" title="" /></p>
+
+<p>Download     <a href="HCS301_bits_peak.zip">HCS301 bits peak</a>:</p>
+
+<ul>
+<li>Round 528 (position) = 301</li>
+<li>Round width (samples) = 3</li>
+</ul>
+
+<p><img src="HCS301_bits_peak.png" alt="Waveform of HCS301 bits peak" title="" /></p>
+
+<hr />
+
+<h2>HCS301 shift (full / peak)</h2>
+
+<p>Useful to study Hamming distance attacks.</p>
+
+<p>Derived from <strong>HCS301 sync</strong>, trimmed to just the point range where the
+status register leaks.  Each round is zero-padded for visual guidance.</p>
+
+<p><strong>TODO</strong>: add HCS301 shift full</p>
+
+<p>Download     <a href="HCS301_shift_peak.zip">HCS301 shift peak</a>:</p>
+
+<ul>
+<li>Round 528 (position) = 306</li>
+<li>Round width (samples) = 3</li>
+</ul>
+
+<p><img src="HCS301_shift_peak.png" alt="Waveform of HCS301 shift peak" title="" /></p>
+
+<hr />
+
+<h2>Notes:</h2>
+
+<p>¹ semi-consecutive:</p>
+
+<blockquote>
+  <p>Only every other generated message was captured, and some of them
+    were discarded afterwards.  All messages are from the same device,
+    the internal counter is increasing, the step size is small, but it
+    is not 1.</p>
+</blockquote>
+
+<hr />
+
+<p><em>Document author: marc</em> -
+<em>Document version: 13-Oct-2016</em> -
+<a href="../../readme.html">Fork README</a> -
+<a href="../keeloq.html">Keeloq README</a></p>

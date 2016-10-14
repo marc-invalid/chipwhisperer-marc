@@ -43,3 +43,23 @@ Footnotes:
 		<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
 
 
+
+Image processing:
+
+	Crop trace view out of screenshot 1440x900 with max sized trace view:
+		(used area starts at +141+165 from top left, and ends at -0-97 from bottom right)
+
+		convert screenshot.png +repage -crop 100%x100%+141+165 +repage -gravity South -crop 100%x100%+0+97 +repage cropped.png ; identify cropped.png
+
+	Resize screenshot 1440x900 to 832x520:
+
+		convert screenshot.png +repage -strip -gamma .45455 -filter cubic -resize 832x -unsharp 1x0.6 -gamma 2.2 +repage resized.png ; identify resized.png
+
+
+
+
+
+
+
+
+

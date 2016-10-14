@@ -26,7 +26,7 @@ Additional functionality:
   - Partitioning modes
   - **(TODO)** Crypto algorithms
 
-The intention is to stay near the original code base, making all
+The intention is to stay near the original code base, and applying all
 changes in the least invasive way possible.
 
 
@@ -36,6 +36,8 @@ Documentation
   - Fork home: [github.com/marc-invalid/chipwhisperer-marc](https://github.com/marc-invalid/chipwhisperer-marc)
   - **(FIXME)** original ChipWhisperer documentation
   - [Install on Linux Mint 18](doc/marc/install_mint18/install_mint18.md)
+  - ***(TODO)** Resync Slice-to-Slot
+  - [Keeloq for ChipWhisperer](doc/marc/keeloq/keeloq.md)
 
 
 Why a fork?

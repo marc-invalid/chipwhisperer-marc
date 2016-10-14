@@ -2,10 +2,15 @@
 
 <h1>Keeloq for ChipWhisperer</h1>
 
-<p>This is a set of tools to perform power analysis of the Keeloq cipher.  It
+<p>This is a set of tools to study power analysis of the Keeloq cipher.  It
 is based on and integrated with the <a href="https://wiki.newae.com/">ChipWhisperer</a>
-software.  Tutorials and example traces are provided for a quick learning
-experience.</p>
+software.</p>
+
+<p>The Keeloq algorithm is very simple, yet omni-present in our current
+world, making it an easy target to learn power analysis with.</p>
+
+<p>Tutorials and example traces are provided for quick entry, even without
+having to buy any specialized hardware.</p>
 
 <p>Implementation and documentation copyright 2016 by Marc.</p>
 
@@ -16,7 +21,7 @@ experience.</p>
 <h3>Keeloq data capture</h3>
 
 <p>Loose collection of utilities to capture Keeloq data transmissions and
-annotate them to the power traces.</p>
+annotate them to power traces.</p>
 
 <ul>
 <li>GNURadio flow to receive and demodulate RF messages</li>
@@ -127,71 +132,13 @@ exploration, understanding the attacks, and even executing them manually.</p>
 
 <h2>Example traces</h2>
 
-<p>To complement the tutorials, the following example projects are provided.</p>
-
-<h3>HCS301 raw</h3>
-
-<p>Useful to study trace preparation.  Contains synchronization issues
-(RC oscillator clock drift).</p>
-
-<blockquote>
-  <p><strong>### TODO ###</strong></p>
-</blockquote>
+<p>The traces are provided to complement the tutorials, and to serve as
+starting point for further studies.</p>
 
 <ul>
-<li>> 500 semi-consecutive¹ messages</li>
-<li>48.2 MHz sample rate (approx 200 samples per cipher round)</li>
-<li>Covers last 100 rounds (approx)</li>
-<li>Captured with ChipWhisperer CW1002 hardware kit</li>
-<li>Ciphertext annotated</li>
+<li><a href="keeloq_examples_hcs301/keeloq_examples_hcs301.html">HCS301 encoder chip</a></li>
 </ul>
-
-<h3><a href="examples/HCS301_sync.zip">HCS301 sync</a></h3>
-
-<p>Derived from <strong>HCS301 raw</strong>, with clock drift compensated and freaks
-removed.  Useful to study any aspect of the power behavior.</p>
-
-<ul>
-<li>501 semi-consecutive¹ messages</li>
-<li>200 samples per cipher round</li>
-<li><strong>### FIXME ###</strong> rounds covered</li>
-</ul>
-
-<h3>HCS301 bits (<a href="examples/HCS301_bits_full.zip">full</a> / <a href="examples/HCS301_bits_peak.zip">peak</a>)</h3>
-
-<p>Derived from <strong>HCS301 sync</strong>, trimmed to just the point range where
-MSB/LSB bit values leak.  Useful to study bit model attacks.</p>
-
-<ul>
-<li>Samples per cipher round: 40 (full) or 3 (peak)</li>
-<li>Each round is zero-padded for visual guidance</li>
-</ul>
-
-<h3>HCS301 shift (full / <a href="examples/HCS301_shift_peak.zip">peak</a>)</h3>
-
-<p>Derived from <strong>HCS301 sync</strong>, trimmed to just the point range where the
-status register leaks.  Useful to study Hamming distance attacks.</p>
-
-<ul>
-<li>Samples per cipher round: <strong>### FIXME ###</strong> (full) or 3 (peak)</li>
-<li>Each round is zero-padded for visual guidance</li>
-</ul>
-
-<blockquote>
-  <p><strong>### TODO ###</strong>: full variant</p>
-</blockquote>
-
-<h3>Notes:</h3>
-
-<p>¹ semi-consecutive:</p>
-
-<blockquote>
-  <p>Only every other generated message was captured, and some of them
-    were discarded afterwards.  All messages are from the same device,
-    the internal counter is increasing, the step size is small, but it
-    is not 1.</p>
-</blockquote>
 
 <hr />
 
-<p><em>Document version: 25-Sep-2016</em></p>
+<p><em>Document author: marc</em> - <em>Document version: 25-Sep-2016</em> - <a href="../readme.html">Fork README</a></p>
