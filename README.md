@@ -36,7 +36,7 @@ Documentation
   - Fork home: [github.com/marc-invalid/chipwhisperer-marc](https://github.com/marc-invalid/chipwhisperer-marc)
   - **(FIXME)** original ChipWhisperer documentation
   - [Install on Linux Mint 18](doc/marc/install_mint18/install_mint18.md)
-  - ***(TODO)** Resync Slice-to-Slot
+  - **(TODO)** Resync Slice-to-Slot
   - [Keeloq for ChipWhisperer](doc/marc/keeloq/keeloq.md)
 
 
