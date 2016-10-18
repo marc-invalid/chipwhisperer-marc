@@ -11,8 +11,9 @@ MARCPATH="doc/marc"
 # TODO: add automatic discovery (with find or make)
 TUTORIALS="keeloq/keeloq \
            keeloq/keeloq_algorithm/keeloq_algorithm \
-           keeloq/keeloq_capture_cw1002/keeloq_capture_cw1002 \
-           keeloq/keeloq_examples_hcs301/keeloq_examples_hcs301 \
+           keeloq/attack_bits/attack_bits \
+           keeloq/capture_cw1002/capture_cw1002 \
+           keeloq/examples_hcs301/examples_hcs301 \
            install_mint18/install_mint18 \
           "
 

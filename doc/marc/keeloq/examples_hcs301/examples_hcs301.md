@@ -1,7 +1,7 @@
 <meta charset="UTF-8">
 
-Keeloq example traces: HCS301
-=============================
+Keeloq example traces: HCS301 encoder chip
+==========================================
 
 This collection of traces is part of the [Keeloq toolset](../keeloq.md)
 and complements the tutorials.  It can also be used as starting point
@@ -114,7 +114,7 @@ Notes:
 _________________________________________________________________________
 
 _Document author: marc_ -
-_Document version: 13-Oct-2016_ -
+_Document version: 14-Oct-2016_ -
 [Fork README](../../../../README.md) -
 [Keeloq README](../keeloq.md)
 
