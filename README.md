@@ -4,49 +4,72 @@
 chipwhisperer-marc
 ==================
 
-This is my version of ChipWhisperer (git://git.assembla.com/chipwhisperer.git).
+This is my version of ChipWhisperer.
+
+You're looking at the second drop of several, based on original
+ChipWhisperer git from Aug-2016.
 
 
-You're looking at the second drop of several, please be patient
-and give me some time for cleaning up.
+Features and documentation
+--------------------------
 
+Tutorials:
 
-What's different to the original ChipWhisperer?
------------------------------------------------
+  - [Install on Linux Mint 18](doc/marc/install_mint18/install_mint18.md)
 
-Various small improvements:
+Preprocessing filters:
+
+  - Cache: RAM
+  - Resync: Slice-to-Slot
+
+Chiper: [Keeloq for ChipWhisperer](doc/marc/keeloq/keeloq.md)
+
+  - Partition modes
+  - Attack scripts
+  - Tutorials
+  - Example traces
+
+Other small improvements:
 
   - UI changes
-  - plugin/script API extensions
-  - performance and bug fixes
+  - Accessible color palette
+  - Plugin/script API extensions
+  - Performance improvements and bug fixes
 
-Additional functionality:
+For features already present in the original ChipWhisperer, see:
 
-  - Preprocessing filters
-  - Partitioning modes
-  - **(TODO)** Crypto algorithms
+  - [https://wiki.newae.com](https://wiki.newae.com/)
+  - [https://newae.com/sidechannel/cwdocs/](https://newae.com/sidechannel/cwdocs/)
 
-The intention is to stay near the original code base, and applying all
+
+Still to come...
+----------------
+
+Please be patient and give me some time for cleaning up the
+rest of my code:
+
+  - Keeloq Hamming distance attack
+  - rebase to latest upstream git
+
+Also:
+
+  - Slice-to-Slot filter documentation
+
+
+Information about this fork
+---------------------------
+
+My intention is to stay near the original code base, and applying all
 changes in the least invasive way possible.
-
-
-Documentation
--------------
-
-  - Fork home: [github.com/marc-invalid/chipwhisperer-marc](https://github.com/marc-invalid/chipwhisperer-marc)
-  - **(FIXME)** original ChipWhisperer documentation
-  - [Install on Linux Mint 18](doc/marc/install_mint18/install_mint18.md)
-  - **(TODO)** Resync Slice-to-Slot
-  - [Keeloq for ChipWhisperer](doc/marc/keeloq/keeloq.md)
-
-
-Why a fork?
------------
 
 I have no write permission to the original repository and can't
 contribute directly.  Using the fork I am sharing my work with
 the public and also with the ChipWhisperer team.  Hopefully they
 will pull them into the main codebase.
+
+Fork home: [https://github.com/marc-invalid/chipwhisperer-marc](https://github.com/marc-invalid/chipwhisperer-marc)
+
+Upstream home: git://git.assembla.com/chipwhisperer.git
 
 
 Thanks

@@ -1,0 +1,489 @@
+<p><meta charset="UTF-8"></p>
+
+<h1>Bit model attack on Keeloq HCS301 encoder</h1>
+
+<p>The bit model attack is simple but works very well against the
+(cheap &amp; robust) HCS301 encoder chip.  Note that the
+<a href="../keeloq_algorithm/keeloq_algorithm.html">Keeloq algorithm</a>
+itself is bit-based too.</p>
+
+<p>Covers:</p>
+
+<ul>
+<li>Load and inspect trace plots</li>
+<li>Use <em>Trace Explorer</em> and partition modes to locate leakage</li>
+<li>Recover round timing</li>
+<li>Recover key bits manually, using <em>Trace Explorer</em></li>
+<li>Interpret unexpected results</li>
+<li>How to use the automatic key recovery script</li>
+</ul>
+
+<hr />
+
+<h2>Step 1: Load the power traces into CWAnalyzer</h2>
+
+<p>You will need at least 200-300 annotated power captures of an encoder
+chip.  If you don't have any, you can use one of the following example
+traces:</p>
+
+<ul>
+<li><p><a href="../examples_hcs301/HCS301_sync.zip">HCS301 sync</a></p>
+
+<blockquote>
+  <p>No fancy preprocessing other than sychronization.  This is
+sub-optimal for attacking, because there is a lot of irrelevant
+data which can mask the good data.  <strong>For learning</strong> however,
+these traces are better suited and will give you much better
+insight.</p>
+</blockquote></li>
+<li><p><a href="../examples_hcs301/HCS301_bits_full.zip">HCS301 bits full</a></p>
+
+<blockquote>
+  <p>Easier to work with. Much of the irrelevant noise has been
+removed already and rounds are easily distinguished during
+visual inspection.</p>
+</blockquote></li>
+<li><p><a href="../examples_hcs301/HCS301_bits_peak.zip">HCS301 bits peak</a></p>
+
+<blockquote>
+  <p>Best for attacking.  The bit leakage is condensed into single
+peaks, there are no distractions.</p>
+</blockquote></li>
+</ul>
+
+<p>Download and uncompress the example traces, or get your own traces
+ready.</p>
+
+<p>Run CWAnalyzer and open one of the projects with the traces.</p>
+
+<p>Find the <em>Trace Output Plot</em> dock on the right-hand side, and
+select the <em>Trace Output Plot</em> tab.  You will now see the trace
+waveform.</p>
+
+<p><img src="01a_traces_loaded.png" alt="Power trace plot" title="" /></p>
+
+<p><strong>Exercise</strong>:</p>
+
+<ul>
+<li>Use the mouse to inspect details, zooming in and out.</li>
+</ul>
+
+<p><strong>Tips</strong>:</p>
+
+<ul>
+<li><p>Enable <em>Move</em> mode (right-most icon above the plot), so
+you can grab and pan the plot with the left button.  The
+right button zooms: click and hold, and move the mouse.</p></li>
+<li><p>On the left-hand side, in the <em>Results</em> tab, way down, is
+an item <em>Trace Output Plot</em> and <em>Trace Range</em>.  Here you
+can specify which range of traces you want to see (default:
+0-7).  Click <em>redraw</em> to update the display.</p></li>
+</ul>
+
+<hr />
+
+<h2>Step 2: Identify the points of ciphertext leakage</h2>
+
+<p><strong>If you're lazy and just want to try the automatic mode,
+  skip to 'Step 5: Automatic key recovery'</strong></p>
+
+<p>Or, continue reading and look where ciphertext leaks:</p>
+
+<p>The ciphertext is produced in the last 32 rounds of the encryption
+process, and is 32 bits wide.  The ciphertext is known, because it is
+part of the encoded RF message.  Make sure that your traces contain
+correct ciphertext data (the example traces do).</p>
+
+<p>Select the <em>Trace Explorer</em> tab (on left-hand side).  Click <em>enabled</em>
+if it isn't already clicked, to see the configuration parameters.</p>
+
+<p>Configure</p>
+
+<ul>
+<li>Comparison Mode = Welch's T-Test</li>
+<li>Partiton Mode = Keeloq: bit(status[all])</li>
+<li>Color Palette = Rainbow</li>
+</ul>
+
+<p>then click <em>Display</em> to run the partition algorithm.  A new dock
+<em>Partition Comparison Graph</em> will open and show the ciphertext
+leakage.</p>
+
+<p>You can re-arrange the plot dock windows, and close unnecessary
+ones to gain screen estate (use the <em>Windows</em> menu to get them
+back later).  For example like this:</p>
+
+<p><img src="02a_ciphertext_leakage.png" alt="Leakage plot of ciphertext" title="" /></p>
+
+<p><em>Screenshot: Ciphertext leakage (top) versus power trace (bottom)</em></p>
+
+<p>A rainbow-colored group of peaks is clearly visible, starting
+after point 14000.  Each color represents a different bit of the
+32-bit ciphertext (see legend below the plot).</p>
+
+<p><strong>Exercises</strong>:</p>
+
+<ul>
+<li><p>Zoom in to inspect shape and width of the peaks, and the
+spacing in between.  The latter is equivalent to the <strong>round
+timing</strong> (the algorithm produces one bit per round).</p></li>
+<li><p>Use the legend to enable and disable single bits (by clicking).
+Find out in which order the chip calculates the bits.</p></li>
+<li><p>Align the leakage plot with the power trace plot and
+determine which portion of the waveform leaks information
+about the ciphertext.</p></li>
+<li><p>Identify where bit 31 of the ciphertext leaks.  Why are
+there many peaks?  Which one is the 'correct' one?  Find
+my guess in the footnote¹.</p>
+
+<blockquote>
+  <p>It may be impossible to toggle bit 31 on narrow displays
+  (legend is cut off midway, like in the screenshot above).
+  If this happens to you, you have two remedies:  Either
+  maximize CWAnalyzer and the <em>Partition Comparison Graph</em>
+  dock to uncover as many buttons as possible.  Or, change
+  <em>Partition Mode</em> to <em>Keeloq: bit(status[msb])</em> and then
+  click <em>Display</em> to show <strong>only bit 31</strong>.</p>
+</blockquote></li>
+</ul>
+
+<p><strong>Tips</strong>:</p>
+
+<ul>
+<li><p>Dial <em>Alpha</em> down a bit (right-click inside the plot to
+get the context menu, then <em>Plot Options</em> and <em>Alpha</em>) to
+blend many traces into a more meaningful display.</p></li>
+<li><p>Use different <em>Color Palette</em> choices (in <em>Trace Explorer</em>
+configuration parameters), depending on what information
+you are looking for.  Click <em>Display</em> to update the plot.</p>
+
+<ul>
+<li><em>Rainbow</em> is great for groups of bits.</li>
+<li><em>Accessible</em> works best for a small number of bits where
+ every difference counts.</li>
+<li><em>Monochrome</em> helps spotting outliers vs mainstream.  Pair
+ it with <em>Alpha</em> blending!  Also serves to concentrate on
+ shapes only.</li>
+</ul></li>
+</ul>
+
+<p><img src="02b_bits_0_and_1_leakage.png" alt="Leakage detail of ciphertext bits 1 and 0" title="" /></p>
+
+<p><em>Screenshot: Ciphertext bits 1 (blue) and 0 (red) versus power trace (bottom)</em></p>
+
+<hr />
+
+<h2>Step 3: Discover hidden internal state through leakage</h2>
+
+<h3>Use ciphertext bit 31 for orientation</h3>
+
+<p>Ciphertext bit 31 is of particular interest, because it is the
+earliest known bit.  Every leaked bit preceeding bit 31 is an
+internal state bit, and reveals one key bit.</p>
+
+<p>Select the <em>Trace Explorer</em> tab and configure</p>
+
+<ul>
+<li>Comparison Mode = Welch's T-Test</li>
+<li>Partiton Mode = Keeloq: bit(status[msb])</li>
+<li>Color Palette = Two colors</li>
+</ul>
+
+<p>Then click <em>Display</em>.</p>
+
+<p>Zoom and pan the plot so that bit 31 is at the right, and at
+least 3 more rounds are visible on the left.  For <em>HCS301 sync</em>
+that would be range 13200-14000.</p>
+
+<h3>Show round 496 (the bit preceeding ciphertext bit 31)</h3>
+
+<p>Select the <em>Attack Script Generator</em> tab (left-hand side), then
+set</p>
+
+<ul>
+<li>Attack = Keeloq DPA</li>
+</ul>
+
+<p>Select the <em>Attack</em> tab to see the configuration parameters for
+Keeloq.  Find the <em>Analysis Options (for Partition modes)</em>
+area and set</p>
+
+<ul>
+<li>Known keystream = 0
+<blockquote>
+  <p>This instructs the Keeloq partition mode to undo the last
+round of encryption, using 0 as key bit.</li>
+</ul>
+
+<p>Return to the <em>Trace Explorer</em> tab and click <em>Display</em>.</p>
+</blockquote></p>
+
+<p>Note how the peak jumps one round to the left.  You are looking
+at leakage produced by the <strong>internal state</strong>.</p>
+
+<h3>Show more rounds</h3>
+
+<p>Repeat the above for <em>Known keystream</em> values of 0, 1, 00, 01,
+10, and 11.  Write down where you have found the peak for each
+keystream (some results will not have a peak).</p>
+
+<p>About the <em>Known keystream</em> parameter:</p>
+
+<blockquote>
+  <p>The keystream bits are applied from left to right in decrypt
+  operations.  Every bit undoes one round, setting the internal
+  status register to what it was in the previous round.  You are
+  looking at the MSB of status in round 528 - sizeof(keystream).</p>
+
+<p>Only 0 and 1 characters are used as key bits, everything else
+  is ignored.</p>
+</blockquote>
+
+<p><strong>Exercises</strong>:</p>
+
+<ul>
+<li><p>Look at your results and think about what they mean.  The
+solution is found below in the next step.</p></li>
+<li><p>Optional: Repeat with 3 keystream bits 000, 001, 010, 011,
+100, 101, 110, 111.</p></li>
+</ul>
+
+<hr />
+
+<h2>Step 4: Discussion and manual key bit recovery</h2>
+
+<p>For <em>HCS301 sync</em> you probably have found this:</p>
+
+<blockquote>
+<pre><code>| Key | Peak pos     | Round | Notes   |
+|-----|--------------|-------|---------|
+|     | ..........X. |  497  |         |
+| 0   | .......X.... |  496  |         |
+| 1   | .......X.... |  496  |         |
+| 00  | ....X....... |  495  |         |
+| 01  | ....X....... |  495  |         |
+| 10  | ............ |  495  |         |
+| 11  | ............ |  495  |         |
+| 000 | ............ |  494  |         |
+| 001 | ............ |  494  |         |
+| 010 | .X.......... |  494  |         |
+| 011 | .X.......... |  494  |         |
+| 100 | .x.......... |  494  | unclear |
+| 101 | .x.......... |  494  | unclear |
+| 110 | .x.......... |  494  | unclear |
+| 111 | .x.......... |  494  | unclear |
+</code></pre>
+</blockquote>
+
+<h3>Observation 1: Results seem to come in pairs</h3>
+
+<p>0 and 1 have a peak.  00 and 01 also have one. 10 and 11 have none
+(forming a pair too).</p>
+
+<p><strong>Exercise</strong>:</p>
+
+<ul>
+<li>Calculate 0 again, and zoom to the peak full-screen.  Then
+calculate 1 and watch the difference.</li>
+</ul>
+
+<p>You'll find that there is no difference at all between pairs that
+share all bits except the LSB.</p>
+
+<p>This is caused by an interaction between (bit-based) Keeloq and
+T-Test with 2 partitions.  The key bit is mixed into the
+attacked bit with a linear operation (XOR).  The partitioning
+mode thus creates the same two groups of traces, just swapped
+around depending on the bit value.  The absolute differences
+between them will always be the same.  Think distance from
+A to B, versus B to A.   The effect disappears when more
+keystream bits are used, thanks to the non-linear behavior of
+Keeloq (NLF).</p>
+
+<p><strong>Tip</strong>:</p>
+
+<ul>
+<li>Disregard the last bit as distinguisher, and/or append a
+<em>dummy bit</em> where convenient.</li>
+</ul>
+
+<p>Update your table, ignoring the last bit:</p>
+
+<blockquote>
+<pre><code>| Key | Peak pos     | Round | Notes   |
+|-----|--------------|-------|---------|
+|     | ..........X. |  497  |         |
+| x   | .......X.... |  496  |         |
+| 0x  | ....X....... |  495  |         |
+| 1x  | ............ |  495  |         |
+| 00x | ............ |  494  |         |
+| 01x | .X.......... |  494  |         |
+| 10x | .x.......... |  494  | unclear |
+| 11x | .x.......... |  494  | unclear |
+</code></pre>
+</blockquote>
+
+<h3>Observation 2: No peaks for 1x and 00x</h3>
+
+<p>1x shows no peak, while its partner 0x does.  This suggests
+that 0x correlates with the measured behavior of the chip,
+and models it correctly to a high degree.  1x does not
+correlate, it has nothing in common with this chip.</p>
+
+<blockquote>
+  <p>The first recovered keystream bit seems to be a 0.
+  Congratulations!</p>
+</blockquote>
+
+<p>Now look at 00x vs its partner 01x.  00x does not correlate,
+while 01x does.</p>
+
+<blockquote>
+  <p>Ignoring the unclear results of 10x and 11x for a moment,
+  the 2nd keystream bit would be a 1.</p>
+</blockquote>
+
+<h3>Observation 3: Unclear results for 10x and 11x</h3>
+
+<p>There are 'weak' peaks for 10x and 11x.  Neither are very
+clear, and they are incompatible with the previous findings.</p>
+
+<p>Power analysis is about choosing the most likely outcome.
+If we had accepted 0x as correct from the start, we'd never
+have calculated results at 1Xx.  The question is how deep
+to explore the tree of options before accepting something
+as correct (think: chess program analysis depth).</p>
+
+<p>Possible interpretations of the unclear results:</p>
+
+<blockquote>
+  <p><strong>Optimistic</strong>:  A unclear decision at this branch means
+    that neither choice models the chip better than the
+    other.  We must have lost track earlier (before
+    reaching this branch), and can stop here.</p>
+
+<p><strong>Pessimistic</strong>:  Noise could have affected the
+    quality at this branch.  We should explore deeper
+    below it to clarify.</p>
+</blockquote>
+
+<p><strong>Exercise</strong>:</p>
+
+<ul>
+<li>Explore a few random locations below branch 1Xx and
+compare them to what you find below branch 01x (at
+the same depth).  Don't forget to adapt your zoom to
+see the additional rounds!</li>
+</ul>
+
+<p><strong>Tips</strong>:</p>
+
+<ul>
+<li><p>Keeloq is not very non-linear.  Even wrong paths can
+correlate at times, especially when you use few traces.</p></li>
+<li><p>Noisy or weak results in a round for <strong>all</strong> tested
+keystreams?  Maybe there was noise at this point of time,
+for example from another component operating in
+parallel.  Sometimes you can see such noise in the
+<em>Power Trace View</em>.</p>
+
+<p>Identify the noisy point range, and skip over it by
+inserting all possible values for the affected round(s).
+The correlation behavior past the noise helps you
+get back on track.</p></li>
+<li><p>Enhance the readability of your keystream by adding
+whitespace, questionmarks, and other notes in the
+<em>Known keystream</em> field.  Everything but 0 and 1 is
+ignored.</p></li>
+</ul>
+
+<hr />
+
+<h2>Step 5: Automatic key recovery</h2>
+
+<p>Select the <em>Attack Script Generator</em> tab (left-hand side), then
+set</p>
+
+<ul>
+<li>Attack = Keeloq DPA</li>
+</ul>
+
+<p>Click the <em>Attack</em> icon (in the tool bar above) to run the
+script.</p>
+
+<p><img src="05a_progress.png" alt="Progress diaglog with key=300X........7114" title="" /></p>
+
+<p><em>Screenshot: Progress dialog with current key guess</em></p>
+
+<p>Once the script is over, the result is visible in the <em>Debug
+Logging</em> dock.  Use the <em>Windows</em> menu to make it visible, if
+you have closed it before.</p>
+
+<p>The final key guess is printed in one of the last lines.  Also,
+it is used to decrypt the ciphertexts of all traces.  For
+sequential captures, the resulting plaintexts should follow
+the expected pattern, otherwise the key guess is not correct.</p>
+
+<h3>Algorithm description</h3>
+
+<p>The current implementation is very simple.  It follows the
+highest peak at each junction, and never tracks back.</p>
+
+<p>The highest peak is selected either from the whole trace
+(or rather the configured point range).  Or, if round
+timing is given, the detection can be limited to just
+the range of each round.  The latter works with fewer
+traces.</p>
+
+<p>Round timing can be specified below <em>Timing Setup</em> (in
+the <em>Attack</em> tab).  In step 2 you have already learned
+how to recover round timing.  For the <em>HCS301 sync</em>
+example traces, configure</p>
+
+<ul>
+<li>Round 528 (pos)       = 20000</li>
+<li>Round width (samples) = 200</li>
+</ul>
+
+<p>then enable <em>Utilize round timing</em> (at the bottom).</p>
+
+<p><strong>Exercises</strong>:</p>
+
+<ul>
+<li><p>Run the script with fewer traces (below <em>Trace Setup</em>:
+<em>Starting trace</em> and <em>Traces per attack</em>) and find the
+minimum number of traces for successful key recovery.</p></li>
+<li><p>Compare the minimum number with and without using
+round timing.</p></li>
+<li><p>Try the <em>HCS301 bits peak</em> example traces.</p></li>
+</ul>
+
+<hr />
+
+<h2>Notes</h2>
+
+<p>¹ Ciphertext bit 31 has many leakage peaks:</p>
+
+<blockquote>
+  <p>The correct peak is the one that fits nicely into the pattern
+  of the other bits.  The group defines the round timing.  Bit 31
+  is the earliest bit produced by the chip, therefore it is to
+  the left of bit 30.  To the right of bit 0 (the last bit
+  produced), the algorithm is over and additional peaks are
+  meaningless.</p>
+
+<p>In the <em>HCS301 sync</em> example, the good peak is at 13855-13865.</p>
+
+<p>The extra peaks after 20200 are side-effects of the particular
+  hardware implementation.  Probably the core is clocked for some
+  more time to complete internal cleanup.  For example, to transfer
+  the ciphertext out to the next processing stage, to re-align the
+  key register for the next encryption, etc.</p>
+</blockquote>
+
+<hr />
+
+<p><em>Document author: marc</em> -
+<em>Document version: 22-Oct-2016</em> -
+<a href="../../readme.html">Fork README</a> -
+<a href="../keeloq.html">Keeloq README</a></p>

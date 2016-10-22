@@ -3,8 +3,7 @@
 <h1>Keeloq for ChipWhisperer</h1>
 
 <p>This is a set of tools to study power analysis of the Keeloq cipher.  It
-is based on and integrated with the <a href="https://wiki.newae.com/">ChipWhisperer</a>
-software.</p>
+is based on and integrated with the ChipWhisperer software.</p>
 
 <p>The Keeloq algorithm is very simple, yet omni-present in our current
 world, making it an easy target to learn power analysis with.</p>
@@ -34,9 +33,10 @@ annotate them to power traces.</p>
 <p>Powerful plugin to prepare traces for analysis.</p>
 
 <ul>
-<li>Compensate for internal RC oscillator drift (HCSxxx)</li>
+<li>Compensate for RC oscillator clock drift</li>
 <li>Extract arbitrary point ranges from each round</li>
-<li>Compress ranges to one peak per round</li>
+<li>Compress rounds to single point values</li>
+<li>Visually separate rounds with zero-padding</li>
 </ul>
 
 <h3>Trace Explorer partition modes: Keeloq (various)</h3>
@@ -110,17 +110,23 @@ exploration, understanding the attacks, and even executing them manually.</p>
 
 <ul>
 <li>Compensate for clock drift and eliminate freaks</li>
-<li>Recover Keeloq round timing</li>
+<li>Recover round timing</li>
 <li>Identify and extract interesting point ranges</li>
 <li>Compress to peaks</li>
 <li>Export polished results</li>
 </ul>
 
-<h3>Bit model attack on Keeloq</h3>
+<h3><a href="attack_bits/attack_bits.html">Bit model attack on Keeloq</a></h3>
 
-<blockquote>
-  <p><strong>### TODO ###</strong>: Not finished yet</p>
-</blockquote>
+<p>Explains the bit model attack script and partition modes.</p>
+
+<ul>
+<li>Find leakage with <em>Trace Explorer</em></li>
+<li>Recover round timing</li>
+<li>Manual key recovery</li>
+<li>Interpret unexpected results</li>
+<li>Automatic key recovery</li>
+</ul>
 
 <h3>Hamming distance model attack on Keeloq</h3>
 
@@ -136,9 +142,11 @@ exploration, understanding the attacks, and even executing them manually.</p>
 starting point for further studies.</p>
 
 <ul>
-<li><a href="keeloq_examples_hcs301/keeloq_examples_hcs301.html">HCS301 encoder chip</a></li>
+<li><a href="examples_hcs301/examples_hcs301.html">HCS301 encoder chip</a></li>
 </ul>
 
 <hr />
 
-<p><em>Document author: marc</em> - <em>Document version: 25-Sep-2016</em> - <a href="../readme.html">Fork README</a></p>
+<p><em>Document author: marc</em> -
+<em>Document version: 22-Oct-2016</em> -
+<a href="../readme.html">Fork README</a></p>

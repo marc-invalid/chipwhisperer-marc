@@ -54,3 +54,7 @@ for TUT in $TUTORIALS ; do
 done
 
 
+#--- crop/resize images
+
+# convert .marc/ignore/screenshots_hires/attack_bits/05a_progress.png +repage -crop 100%x100%+594+340 +repage -crop 832x +repage -gravity South -crop 100%x100%+0+330 +repage  doc/marc/keeloq/attack_bits/05a_progress.png
+

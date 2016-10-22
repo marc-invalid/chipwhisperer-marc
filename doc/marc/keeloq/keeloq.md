@@ -4,8 +4,7 @@ Keeloq for ChipWhisperer
 ========================
 
 This is a set of tools to study power analysis of the Keeloq cipher.  It
-is based on and integrated with the [ChipWhisperer](https://wiki.newae.com/)
-software.
+is based on and integrated with the ChipWhisperer software.
 
 The Keeloq algorithm is very simple, yet omni-present in our current
 world, making it an easy target to learn power analysis with.
@@ -34,9 +33,10 @@ annotate them to power traces.
 
 Powerful plugin to prepare traces for analysis.
 
-  - Compensate for internal RC oscillator drift (HCSxxx)
+  - Compensate for RC oscillator clock drift
   - Extract arbitrary point ranges from each round
-  - Compress ranges to one peak per round
+  - Compress rounds to single point values
+  - Visually separate rounds with zero-padding
 
 
 ### Trace Explorer partition modes: Keeloq (various)
@@ -99,15 +99,21 @@ Rehash of public information about Keeloq.
 > **### TODO ###**: Not finished yet
 
   - Compensate for clock drift and eliminate freaks
-  - Recover Keeloq round timing
+  - Recover round timing
   - Identify and extract interesting point ranges
   - Compress to peaks
   - Export polished results
 
 
-### Bit model attack on Keeloq
+### [Bit model attack on Keeloq](attack_bits/attack_bits.md)
 
-> **### TODO ###**: Not finished yet
+Explains the bit model attack script and partition modes.
+
+  - Find leakage with _Trace Explorer_
+  - Recover round timing
+  - Manual key recovery
+  - Interpret unexpected results
+  - Automatic key recovery
 
 
 ### Hamming distance model attack on Keeloq
@@ -124,8 +130,10 @@ Example traces
 The traces are provided to complement the tutorials, and to serve as
 starting point for further studies.
 
-  - [HCS301 encoder chip](keeloq_examples_hcs301/keeloq_examples_hcs301.md)
+  - [HCS301 encoder chip](examples_hcs301/examples_hcs301.md)
 
 ______________________________________________________________________
 
-_Document author: marc_ - _Document version: 25-Sep-2016_ - [Fork README](../../../README.md)
+_Document author: marc_ -
+_Document version: 22-Oct-2016_ -
+[Fork README](../../../README.md)
